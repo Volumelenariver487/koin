@@ -648,10 +648,7 @@ class _AnalysisScreenState extends ConsumerState<AnalysisScreen> {
           layoutBuilder: (Widget? currentChild, List<Widget> previousChildren) {
             return Stack(
               alignment: Alignment.center,
-              children: <Widget>[
-                ...previousChildren,
-                if (currentChild != null) currentChild,
-              ],
+              children: <Widget>[...previousChildren, ?currentChild],
             );
           },
           child: _showPieChart
