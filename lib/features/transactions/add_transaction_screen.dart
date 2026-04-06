@@ -1000,8 +1000,13 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen>
                                   ? 'Choose where the money leaves from'
                                   : 'Choose the account for this transaction',
                               selectedId: _selectedAccountId,
-                              onSelected: (id) =>
-                                  setState(() => _selectedAccountId = id),
+                              onSelected: (id) => setState(() {
+                                _selectedAccountId = id;
+                                if (_selectedType == TransactionType.transfer &&
+                                    _selectedToAccountId == id) {
+                                  _selectedToAccountId = null;
+                                }
+                              }),
                             ),
                           ),
                           // To Account (transfer only)
@@ -1045,9 +1050,13 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen>
                                               'Choose where the money arrives',
                                           selectedId: _selectedToAccountId,
                                           excludeAccountId: _selectedAccountId,
-                                          onSelected: (id) => setState(
-                                            () => _selectedToAccountId = id,
-                                          ),
+                                          onSelected: (id) => setState(() {
+                                            if (_selectedAccountId == id) {
+                                              _selectedToAccountId = null;
+                                            } else {
+                                              _selectedToAccountId = id;
+                                            }
+                                          }),
                                         ),
                                       ),
                                     ],
