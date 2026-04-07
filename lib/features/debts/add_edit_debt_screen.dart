@@ -182,7 +182,7 @@ class _AddEditDebtScreenState extends ConsumerState<AddEditDebtScreen>
                     const Gap(32),
 
                     // Installment Plan
-                    _buildSectionTitle(context, 'Installment Plan'),
+                    _buildSectionTitle(context, 'Installment Plan (Optional)'),
                     const Gap(12),
                     _buildInstallmentsCard(
                       context,
@@ -605,7 +605,7 @@ class _AddEditDebtScreenState extends ConsumerState<AddEditDebtScreen>
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'Count',
+                      'Count (Optional)',
                       style: TextStyle(
                         fontSize: 11,
                         fontWeight: FontWeight.w600,
@@ -636,7 +636,7 @@ class _AddEditDebtScreenState extends ConsumerState<AddEditDebtScreen>
                             onTap: () => HapticService.light(),
                             onChanged: (_) => setState(() {}),
                             decoration: InputDecoration(
-                              hintText: '0',
+                              hintText: 'None',
                               hintStyle: TextStyle(
                                 color: AppTheme.textLightColor(
                                   context,
