@@ -29,7 +29,7 @@ class DatabaseHelper {
 
     return await openDatabase(
       path,
-      version: 17,
+      version: 19,
       onCreate: _createDB,
       onUpgrade: _onUpgrade,
     );
@@ -163,6 +163,20 @@ CREATE TABLE app_settings (
         // Column might already exist
       }
     }
+    if (oldVersion < 18) {
+      try {
+        await db.execute('ALTER TABLE accounts ADD COLUMN logoAsset TEXT');
+      } catch (e) {
+        // Column might already exist
+      }
+    }
+    if (oldVersion < 19) {
+      try {
+        await db.execute('ALTER TABLE accounts ADD COLUMN cardColorHex TEXT');
+      } catch (e) {
+        // Column might already exist
+      }
+    }
   }
 
   Future _createPlannedPaymentsTable(Database db) async {
@@ -268,7 +282,9 @@ CREATE TABLE accounts (
   colorHex $textType,
   initialBalance $realType,
   excludeFromTotal INTEGER DEFAULT 0,
-  position INTEGER DEFAULT 0
+  position INTEGER DEFAULT 0,
+  logoAsset TEXT,
+  cardColorHex TEXT
 )
 ''');
   }

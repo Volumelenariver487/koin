@@ -96,33 +96,19 @@ class _ActivityScreenState extends State<ActivityScreen>
                   ],
                 ),
               ),
-              GestureDetector(
-                    onTap: () {
+              IconButton(
+                    onPressed: () {
                       HapticService.light();
                       Navigator.push(
                         context,
                         SlideUpRoute(page: const CustomReportsScreen()),
                       );
                     },
-                    child: Container(
-                      padding: const EdgeInsets.all(12),
-                      decoration: BoxDecoration(
-                        color: AppTheme.surfaceColor(context),
-                        shape: BoxShape.circle,
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withValues(alpha: 0.04),
-                            blurRadius: 10,
-                            offset: const Offset(0, 4),
-                          ),
-                        ],
-                      ),
-                      child: Icon(
-                        Icons.summarize_outlined,
-                        color: AppTheme.textColor(context),
-                        size: 22,
-                      ),
+                    icon: Icon(
+                      Icons.summarize_outlined,
+                      color: AppTheme.textColor(context),
                     ),
+                    tooltip: 'Custom Reports',
                   )
                   .animate()
                   .fade(duration: 400.ms, delay: 200.ms)

@@ -25,25 +25,50 @@ class AccountItem extends StatelessWidget {
     this.trailing,
   });
 
+  /// Whether the card has a coloured (non-default) background.
+  bool get _hasColoredBackground =>
+      account.cardColor != null || account.logoAsset != null;
+
+  /// Resolves the card background:
+  ///  1. Explicit card color set by the user  →  use that
+  ///  2. Logo-based account                   →  use brand color w/ high opacity
+  ///  3. Default                              →  surface color
+  Color _cardBackground(BuildContext context) {
+    if (account.cardColor != null) {
+      return account.cardColor!.withValues(alpha: 0.9);
+    }
+    if (account.logoAsset != null) {
+      return account.color.withValues(alpha: 0.9);
+    }
+    return AppTheme.surfaceColor(context);
+  }
+
+  Color _shadowColor(BuildContext context) {
+    if (account.cardColor != null) {
+      return account.cardColor!.withValues(alpha: 0.20);
+    }
+    if (account.logoAsset != null) {
+      return account.color.withValues(alpha: 0.20);
+    }
+    return Colors.black.withValues(alpha: 0.03);
+  }
+
   @override
   Widget build(BuildContext context) {
     final isPrivate = account.excludeFromTotal;
+    final colored = _hasColoredBackground;
 
     return PressableScale(
       onTap: onTap,
       child: Container(
         decoration: BoxDecoration(
-          color: AppTheme.surfaceColor(context),
+          color: _cardBackground(context),
           borderRadius: BorderRadius.circular(20),
-          border: Border.all(
-            color: AppTheme.dividerColor(context).withValues(alpha: 0.25),
-            width: 1,
-          ),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withValues(alpha: 0.03),
-              blurRadius: 16,
-              offset: const Offset(0, 4),
+              color: _shadowColor(context),
+              blurRadius: 20,
+              offset: const Offset(0, 8),
             ),
           ],
         ),
@@ -51,28 +76,38 @@ class AccountItem extends StatelessWidget {
           padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
           child: Row(
             children: [
-              // ── Account Icon ──
+              // ── Account Icon / Logo ──
               Container(
                 width: 44,
                 height: 44,
                 decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                    colors: [
-                      account.color.withValues(alpha: 0.15),
-                      account.color.withValues(alpha: 0.06),
-                    ],
-                  ),
-                  borderRadius: BorderRadius.circular(13),
+                  gradient: account.logoAsset == null
+                      ? LinearGradient(
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                          colors: [
+                            account.color.withValues(alpha: 0.15),
+                            account.color.withValues(alpha: 0.06),
+                          ],
+                        )
+                      : null,
+                  borderRadius: BorderRadius.circular(12),
                 ),
-                child: Center(
-                  child: Icon(
-                    IconUtils.getIcon(account.iconCodePoint),
-                    color: account.color,
-                    size: 22,
-                  ),
-                ),
+                child: account.logoAsset != null
+                    ? ClipRRect(
+                        borderRadius: BorderRadius.circular(12),
+                        child: Image.asset(
+                          account.logoAsset!,
+                          fit: BoxFit.cover,
+                        ),
+                      )
+                    : Center(
+                        child: Icon(
+                          IconUtils.getIcon(account.iconCodePoint),
+                          color: account.color,
+                          size: 22,
+                        ),
+                      ),
               ),
               const Gap(14),
 
@@ -84,8 +119,10 @@ class AccountItem extends StatelessWidget {
                     Text(
                       account.name,
                       style: TextStyle(
-                        color: AppTheme.textColor(context),
-                        fontWeight: FontWeight.w600,
+                        color: colored
+                            ? Colors.white.withValues(alpha: 0.95)
+                            : AppTheme.textColor(context),
+                        fontWeight: FontWeight.w700,
                         fontSize: 15,
                         letterSpacing: -0.2,
                       ),
@@ -97,9 +134,11 @@ class AccountItem extends StatelessWidget {
                         ? Text(
                             '••••••',
                             style: TextStyle(
-                              color: AppTheme.textLightColor(
-                                context,
-                              ).withValues(alpha: 0.45),
+                              color: colored
+                                  ? Colors.white.withValues(alpha: 0.5)
+                                  : AppTheme.textLightColor(
+                                      context,
+                                    ).withValues(alpha: 0.45),
                               fontWeight: FontWeight.w800,
                               fontSize: 14,
                               letterSpacing: 3,
@@ -112,8 +151,10 @@ class AccountItem extends StatelessWidget {
                             ).format(v),
                             duration: const Duration(milliseconds: 600),
                             style: TextStyle(
-                              color: AppTheme.textLightColor(context),
-                              fontWeight: FontWeight.w500,
+                              color: colored
+                                  ? Colors.white.withValues(alpha: 0.85)
+                                  : AppTheme.textLightColor(context),
+                              fontWeight: FontWeight.w600,
                               fontSize: 14,
                               letterSpacing: -0.2,
                             ),
@@ -134,20 +175,38 @@ class AccountItem extends StatelessWidget {
                           ? Icons.visibility_off_rounded
                           : Icons.visibility_rounded,
                       size: 18,
-                      color: isPrivate
-                          ? AppTheme.textLightColor(
-                              context,
-                            ).withValues(alpha: 0.35)
-                          : AppTheme.primaryColor(
-                              context,
-                            ).withValues(alpha: 0.55),
+                      color: colored
+                          ? Colors.white.withValues(
+                              alpha: isPrivate ? 0.4 : 0.8,
+                            )
+                          : (isPrivate
+                                ? AppTheme.textLightColor(
+                                    context,
+                                  ).withValues(alpha: 0.35)
+                                : AppTheme.primaryColor(
+                                    context,
+                                  ).withValues(alpha: 0.55)),
                     ),
                   ),
                 ),
               ],
 
               // ── Trailing (drag handle etc.) ──
-              if (trailing != null) ...[const Gap(4), trailing!],
+              if (trailing != null) ...[
+                const Gap(4),
+                Theme(
+                  data: Theme.of(context).copyWith(
+                    iconTheme: IconThemeData(
+                      color: colored
+                          ? Colors.white.withValues(alpha: 0.4)
+                          : AppTheme.textLightColor(
+                              context,
+                            ).withValues(alpha: 0.2),
+                    ),
+                  ),
+                  child: trailing!,
+                ),
+              ],
             ],
           ),
         ),

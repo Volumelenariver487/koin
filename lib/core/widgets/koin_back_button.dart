@@ -21,17 +21,10 @@ class KoinBackButton extends StatelessWidget {
         }
       },
       child: Container(
-        padding: const EdgeInsets.all(7),
-        decoration: BoxDecoration(
-          color: AppTheme.surfaceColor(context).withValues(alpha: 0.85),
-          borderRadius: BorderRadius.circular(11),
-          border: Border.all(
-            color: AppTheme.dividerColor(context).withValues(alpha: 0.5),
-          ),
-        ),
+        padding: const EdgeInsets.all(8),
         child: Icon(
           Icons.arrow_back_ios_new_rounded,
-          size: 15,
+          size: 20,
           color: color ?? AppTheme.textColor(context),
         ),
       ),
