@@ -3,16 +3,31 @@ import 'package:flutter/material.dart';
 import 'package:koin/core/theme.dart';
 import 'package:koin/core/utils/haptic_utils.dart';
 
+class KoinSegmentItem {
+  final String label;
+  final IconData? icon;
+
+  const KoinSegmentItem({required this.label, this.icon});
+}
+
 class KoinSegmentedControl extends StatelessWidget {
   final TabController controller;
-  final String leftLabel;
-  final String rightLabel;
+  final List<KoinSegmentItem> segments;
 
-  const KoinSegmentedControl({
+  KoinSegmentedControl({
     super.key,
     required this.controller,
-    required this.leftLabel,
-    required this.rightLabel,
+    required String leftLabel,
+    required String rightLabel,
+  }) : segments = [
+         KoinSegmentItem(label: leftLabel),
+         KoinSegmentItem(label: rightLabel),
+       ];
+
+  const KoinSegmentedControl.custom({
+    super.key,
+    required this.controller,
+    required this.segments,
   });
 
   @override
@@ -21,7 +36,8 @@ class KoinSegmentedControl extends StatelessWidget {
       animation: controller.animation!,
       builder: (context, child) {
         return Container(
-          height: 56, // Taller for a premium feel
+          height: 56,
+          width: double.infinity,
           decoration: BoxDecoration(
             color: AppTheme.surfaceColor(context).withValues(alpha: 0.4),
             borderRadius: BorderRadius.circular(28),
@@ -45,7 +61,8 @@ class KoinSegmentedControl extends StatelessWidget {
                 padding: const EdgeInsets.all(5.0),
                 child: LayoutBuilder(
                   builder: (context, constraints) {
-                    final tabWidth = constraints.maxWidth / 2;
+                    final tabCount = segments.length;
+                    final tabWidth = constraints.maxWidth / tabCount;
                     final animationValue = controller.animation!.value;
 
                     return Stack(
@@ -86,10 +103,9 @@ class KoinSegmentedControl extends StatelessWidget {
                         ),
                         // Tab Labels
                         Row(
-                          children: [
-                            _buildTabItem(context, 0, leftLabel),
-                            _buildTabItem(context, 1, rightLabel),
-                          ],
+                          children: List.generate(tabCount, (i) {
+                            return _buildTabItem(context, i, segments[i]);
+                          }),
                         ),
                       ],
                     );
@@ -103,11 +119,12 @@ class KoinSegmentedControl extends StatelessWidget {
     );
   }
 
-  Widget _buildTabItem(BuildContext context, int index, String label) {
-    // Calculate precise color fraction based on animation for smooth color transition
+  Widget _buildTabItem(BuildContext context, int index, KoinSegmentItem item) {
     final animationValue = controller.animation!.value;
-    final value = index == 0 ? 1.0 - animationValue : animationValue;
-    final clampedValue = value.clamp(0.0, 1.0);
+    // Calculate distance from this index to current animation value
+    final distance = (index - animationValue).abs();
+    // Clamp to 0..1 range (1 = fully active, 0 = fully inactive)
+    final value = (1.0 - distance).clamp(0.0, 1.0);
     final isActive = value > 0.5;
 
     return Expanded(
@@ -118,18 +135,35 @@ class KoinSegmentedControl extends StatelessWidget {
           controller.animateTo(index);
         },
         child: Center(
-          child: Text(
-            label,
-            style: TextStyle(
-              fontWeight: isActive ? FontWeight.w700 : FontWeight.w600,
-              color: Color.lerp(
-                AppTheme.textLightColor(context),
-                AppTheme.textColor(context),
-                clampedValue,
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              if (item.icon != null) ...[
+                Icon(
+                  item.icon,
+                  size: 18,
+                  color: Color.lerp(
+                    AppTheme.textLightColor(context),
+                    AppTheme.textColor(context),
+                    value,
+                  ),
+                ),
+                const SizedBox(width: 8),
+              ],
+              Text(
+                item.label,
+                style: TextStyle(
+                  fontWeight: isActive ? FontWeight.w700 : FontWeight.w600,
+                  color: Color.lerp(
+                    AppTheme.textLightColor(context),
+                    AppTheme.textColor(context),
+                    value,
+                  ),
+                  fontSize: 15,
+                  letterSpacing: -0.2,
+                ),
               ),
-              fontSize: 15,
-              letterSpacing: -0.2,
-            ),
+            ],
           ),
         ),
       ),

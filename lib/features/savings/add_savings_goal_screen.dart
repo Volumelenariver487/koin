@@ -302,16 +302,75 @@ class _AddSavingsGoalScreenState extends ConsumerState<AddSavingsGoalScreen> {
                     const Gap(16),
 
                     // Notes
-                    TextFormField(
-                      controller: _notesController,
-                      decoration: InputDecoration(
-                        labelText: 'Notes (Optional)',
-                        hintText: 'Add any notes about this goal...',
-                        prefixIcon: const Icon(Icons.edit_note_rounded),
-                        filled: true,
-                        fillColor: AppTheme.surfaceColor(context),
+                    Container(
+                      decoration: BoxDecoration(
+                        color: AppTheme.surfaceColor(context),
+                        borderRadius: BorderRadius.circular(18),
+                        border: Border.all(
+                          color: AppTheme.dividerColor(
+                            context,
+                          ).withValues(alpha: 0.7),
+                        ),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withValues(alpha: 0.03),
+                            blurRadius: 12,
+                            offset: const Offset(0, 3),
+                          ),
+                        ],
                       ),
-                      maxLines: 3,
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 16),
+                        child: Row(
+                          children: [
+                            Container(
+                              width: 36,
+                              height: 36,
+                              decoration: BoxDecoration(
+                                color: AppTheme.surfaceLightColor(context),
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                              child: Icon(
+                                Icons.sticky_note_2_rounded,
+                                size: 17,
+                                color: AppTheme.textLightColor(context),
+                              ),
+                            ),
+                            const Gap(12),
+                            Expanded(
+                              child: TextField(
+                                controller: _notesController,
+                                onTap: () {
+                                  HapticService.light();
+                                },
+                                style: TextStyle(
+                                  fontWeight: FontWeight.w600,
+                                  fontSize: 15,
+                                  color: AppTheme.textColor(context),
+                                ),
+                                decoration: InputDecoration(
+                                  hintText: 'Notes (Optional)',
+                                  hintStyle: TextStyle(
+                                    color: AppTheme.textLightColor(
+                                      context,
+                                    ).withValues(alpha: 0.45),
+                                    fontWeight: FontWeight.w400,
+                                    fontSize: 15,
+                                  ),
+                                  border: InputBorder.none,
+                                  enabledBorder: InputBorder.none,
+                                  focusedBorder: InputBorder.none,
+                                  filled: false,
+                                  isDense: true,
+                                  contentPadding: const EdgeInsets.symmetric(
+                                    vertical: 15,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
                     ).animate().fade(delay: 200.ms).slideY(begin: 0.1),
                   ],
                 ),
