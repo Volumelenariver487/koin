@@ -1265,17 +1265,33 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen>
       itemCount: filtered.length,
       emptyMessage: filtered.isEmpty ? 'No other accounts available' : null,
       itemBuilder: (context, index) {
-        final acc = filtered[index];
-        final balance = accountBalances?[acc.id];
-        return _PremiumSheetItem(
-          name: acc.name,
-          accentColor: acc.color,
-          iconCodePoint: acc.iconCodePoint,
-          selected: acc.id == selectedId,
-          balance: balance,
-          isPrivate: acc.excludeFromTotal,
-          currencySymbol: currencySymbol,
-          onTap: () => Navigator.pop(context, acc.id),
+        return Consumer(
+          builder: (context, ref, _) {
+            final liveAccounts = ref.watch(accountProvider).value ?? [];
+            final acc = liveAccounts.firstWhere(
+              (a) => a.id == filtered[index].id,
+              orElse: () => filtered[index],
+            );
+            final balance = accountBalances?[acc.id];
+            return _PremiumSheetItem(
+              name: acc.name,
+              accentColor: acc.color,
+              iconCodePoint: acc.iconCodePoint,
+              selected: acc.id == selectedId,
+              balance: balance,
+              isPrivate: acc.excludeFromTotal,
+              currencySymbol: currencySymbol,
+              onTap: () => Navigator.pop(context, acc.id),
+              onPrivateToggle: () {
+                final updatedAccount = acc.copyWith(
+                  excludeFromTotal: !acc.excludeFromTotal,
+                );
+                ref
+                    .read(accountProvider.notifier)
+                    .updateAccount(updatedAccount);
+              },
+            );
+          },
         );
       },
     );
@@ -1433,6 +1449,7 @@ class _PremiumSheetItem extends StatelessWidget {
     this.balance,
     this.isPrivate = false,
     this.currencySymbol,
+    this.onPrivateToggle,
   });
 
   final String name;
@@ -1443,6 +1460,7 @@ class _PremiumSheetItem extends StatelessWidget {
   final double? balance;
   final bool isPrivate;
   final String? currencySymbol;
+  final VoidCallback? onPrivateToggle;
 
   @override
   Widget build(BuildContext context) {
@@ -1454,47 +1472,66 @@ class _PremiumSheetItem extends StatelessWidget {
           HapticService.selection();
           onTap();
         },
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(20),
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 200),
           curve: Curves.easeOutCubic,
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
           decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(16),
+            borderRadius: BorderRadius.circular(20),
             border: Border.all(
               color: selected
-                  ? primary.withValues(alpha: 0.45)
-                  : AppTheme.dividerColor(context).withValues(alpha: 0.65),
+                  ? primary.withValues(alpha: 0.4)
+                  : AppTheme.dividerColor(context).withValues(alpha: 0.3),
               width: selected ? 1.5 : 1,
             ),
             color: selected
                 ? primary.withValues(alpha: 0.08)
-                : AppTheme.surfaceLightColor(context).withValues(alpha: 0.45),
+                : AppTheme.surfaceColor(context),
             boxShadow: selected
                 ? [
                     BoxShadow(
-                      color: primary.withValues(alpha: 0.12),
+                      color: primary.withValues(alpha: 0.1),
                       blurRadius: 12,
                       offset: const Offset(0, 4),
                     ),
                   ]
-                : null,
+                : [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.02),
+                      blurRadius: 10,
+                      offset: const Offset(0, 4),
+                    ),
+                  ],
           ),
           child: Row(
             children: [
+              // ── Account Icon ──
               Container(
-                padding: const EdgeInsets.all(10),
+                width: 44,
+                height: 44,
                 decoration: BoxDecoration(
-                  color: accentColor.withValues(alpha: 0.14),
-                  borderRadius: BorderRadius.circular(12),
+                  gradient: LinearGradient(
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                    colors: [
+                      accentColor.withValues(alpha: 0.15),
+                      accentColor.withValues(alpha: 0.06),
+                    ],
+                  ),
+                  borderRadius: BorderRadius.circular(13),
                 ),
-                child: Icon(
-                  IconUtils.getIcon(iconCodePoint),
-                  color: accentColor,
-                  size: 22,
+                child: Center(
+                  child: Icon(
+                    IconUtils.getIcon(iconCodePoint),
+                    color: accentColor,
+                    size: 22,
+                  ),
                 ),
               ),
               const Gap(14),
+
+              // ── Name + Balance (two lines) ──
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -1502,39 +1539,77 @@ class _PremiumSheetItem extends StatelessWidget {
                     Text(
                       name,
                       style: TextStyle(
-                        fontSize: 16,
+                        fontSize: 15,
                         fontWeight: FontWeight.w600,
                         letterSpacing: -0.2,
                         color: AppTheme.textColor(context),
                       ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                     ),
                     if (balance != null) ...[
-                      const Gap(2),
-                      Text(
-                        isPrivate
-                            ? '••••'
-                            : NumberFormat.currency(
+                      const Gap(3),
+                      isPrivate
+                          ? Text(
+                              '••••••',
+                              style: TextStyle(
+                                color: AppTheme.textLightColor(
+                                  context,
+                                ).withValues(alpha: 0.45),
+                                fontWeight: FontWeight.w800,
+                                fontSize: 13,
+                                letterSpacing: 2,
+                              ),
+                            )
+                          : Text(
+                              NumberFormat.currency(
                                 symbol: currencySymbol ?? '',
                               ).format(balance),
-                        style: TextStyle(
-                          fontSize: 13,
-                          fontWeight: isPrivate
-                              ? FontWeight.w800
-                              : FontWeight.w500,
-                          letterSpacing: isPrivate ? 2 : 0,
-                          color: AppTheme.textLightColor(context),
-                        ),
-                      ),
+                              style: TextStyle(
+                                fontSize: 13,
+                                fontWeight: FontWeight.w500,
+                                color: AppTheme.textLightColor(context),
+                              ),
+                            ),
                     ],
                   ],
                 ),
               ),
+
+              // ── Privacy Toggle ──
+              if (onPrivateToggle != null) ...[
+                GestureDetector(
+                  onTap: () {
+                    HapticService.selection();
+                    onPrivateToggle!();
+                  },
+                  child: Padding(
+                    padding: const EdgeInsets.all(6),
+                    child: Icon(
+                      isPrivate
+                          ? Icons.visibility_off_rounded
+                          : Icons.visibility_rounded,
+                      size: 18,
+                      color: isPrivate
+                          ? AppTheme.textLightColor(
+                              context,
+                            ).withValues(alpha: 0.35)
+                          : AppTheme.primaryColor(
+                              context,
+                            ).withValues(alpha: 0.55),
+                    ),
+                  ),
+                ),
+              ],
+
+              // ── Selection Indicator ──
+              const Gap(8),
               if (selected)
-                Icon(Icons.check_circle_rounded, color: primary, size: 26)
+                Icon(Icons.check_circle_rounded, color: primary, size: 24)
               else
                 SizedBox(
-                  width: 26,
-                  height: 26,
+                  width: 24,
+                  height: 24,
                   child: Center(
                     child: Container(
                       width: 8,
@@ -1544,7 +1619,7 @@ class _PremiumSheetItem extends StatelessWidget {
                         border: Border.all(
                           color: AppTheme.textLightColor(
                             context,
-                          ).withValues(alpha: 0.25),
+                          ).withValues(alpha: 0.2),
                           width: 1.5,
                         ),
                       ),

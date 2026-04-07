@@ -371,6 +371,15 @@ class _PortfolioScreenState extends ConsumerState<PortfolioScreen>
                 HapticService.light();
                 AccountSheet.show(context, ref, account: account);
               },
+              onPrivateToggle: () {
+                final updatedAccount = account.copyWith(
+                  excludeFromTotal: !account.excludeFromTotal,
+                );
+                ref
+                    .read(accountProvider.notifier)
+                    .updateAccount(updatedAccount);
+                HapticService.selection();
+              },
               trailing: Listener(
                 onPointerDown: (_) => HapticService.light(),
                 child: ReorderableDragStartListener(
