@@ -6,6 +6,8 @@ import 'package:koin/core/models/account.dart';
 import 'package:koin/core/models/savings_goal.dart';
 import 'package:koin/core/models/savings_log.dart';
 import 'package:koin/core/models/planned_payment.dart';
+import 'package:koin/core/models/debt.dart';
+import 'package:koin/core/models/debt_repayment.dart';
 import 'package:flutter/material.dart';
 import 'dart:io';
 
@@ -27,7 +29,7 @@ class DatabaseHelper {
 
     return await openDatabase(
       path,
-      version: 14,
+      version: 15,
       onCreate: _createDB,
       onUpgrade: _onUpgrade,
     );
@@ -106,6 +108,9 @@ CREATE TABLE app_settings (
     if (oldVersion < 14) {
       await _createPlannedPaymentsTable(db);
     }
+    if (oldVersion < 15) {
+      await _createDebtsTables(db);
+    }
   }
 
   Future _createPlannedPaymentsTable(Database db) async {
@@ -128,6 +133,39 @@ CREATE TABLE planned_payments (
   isAutoProcess INTEGER DEFAULT 0,
   FOREIGN KEY (categoryId) REFERENCES categories (id) ON DELETE SET NULL,
   FOREIGN KEY (accountId) REFERENCES accounts (id) ON DELETE SET NULL
+)
+''');
+  }
+
+  Future _createDebtsTables(Database db) async {
+    const idType = 'TEXT PRIMARY KEY';
+    const textType = 'TEXT NOT NULL';
+    const realType = 'REAL NOT NULL';
+
+    await db.execute('''
+CREATE TABLE debts (
+  id $idType,
+  personName $textType,
+  description TEXT,
+  amount $realType,
+  currentAmount $realType,
+  type $textType,
+  startDate $textType,
+  dueDate TEXT,
+  totalInstallments INTEGER DEFAULT 0,
+  accountId TEXT
+)
+''');
+
+    await db.execute('''
+CREATE TABLE debt_repayments (
+  id $idType,
+  debtId $textType,
+  amount $realType,
+  date $textType,
+  note TEXT,
+  accountId TEXT,
+  FOREIGN KEY (debtId) REFERENCES debts (id) ON DELETE CASCADE
 )
 ''');
   }
@@ -228,6 +266,7 @@ CREATE TABLE transactions (
 
     await _createSavingsTables(db);
     await _createPlannedPaymentsTable(db);
+    await _createDebtsTables(db);
 
     // Insert default data
     await _insertDefaultCategories(db);
@@ -344,6 +383,8 @@ CREATE TABLE transactions (
       await txn.delete('categories');
       await txn.delete('accounts');
       await txn.delete('planned_payments');
+      await txn.delete('debt_repayments');
+      await txn.delete('debts');
     });
   }
 
@@ -616,6 +657,74 @@ CREATE TABLE transactions (
     } catch (e) {
       return {};
     }
+  }
+
+  // Debts commands
+  Future<Debt> insertDebt(Debt debt) async {
+    final db = await instance.database;
+    await db.insert('debts', debt.toMap());
+    return debt;
+  }
+
+  Future<List<Debt>> getDebts() async {
+    final db = await instance.database;
+    final result = await db.query('debts', orderBy: 'startDate DESC');
+    return result.map((json) => Debt.fromMap(json)).toList();
+  }
+
+  Future<int> updateDebt(Debt debt) async {
+    final db = await instance.database;
+    return await db.update(
+      'debts',
+      debt.toMap(),
+      where: 'id = ?',
+      whereArgs: [debt.id],
+    );
+  }
+
+  Future<int> deleteDebt(String id) async {
+    final db = await instance.database;
+    return await db.delete('debts', where: 'id = ?', whereArgs: [id]);
+  }
+
+  // Debt Repayments commands
+  Future<DebtRepayment> insertDebtRepayment(DebtRepayment repayment) async {
+    final db = await instance.database;
+    await db.insert('debt_repayments', repayment.toMap());
+
+    // Update currentAmount in debts
+    await db.execute(
+      'UPDATE debts SET currentAmount = currentAmount + ? WHERE id = ?',
+      [repayment.amount, repayment.debtId],
+    );
+
+    return repayment;
+  }
+
+  Future<void> deleteDebtRepayment(DebtRepayment repayment) async {
+    final db = await instance.database;
+    await db.transaction((txn) async {
+      await txn.delete(
+        'debt_repayments',
+        where: 'id = ?',
+        whereArgs: [repayment.id],
+      );
+      await txn.execute(
+        'UPDATE debts SET currentAmount = currentAmount - ? WHERE id = ?',
+        [repayment.amount, repayment.debtId],
+      );
+    });
+  }
+
+  Future<List<DebtRepayment>> getDebtRepayments(String debtId) async {
+    final db = await instance.database;
+    final result = await db.query(
+      'debt_repayments',
+      where: 'debtId = ?',
+      whereArgs: [debtId],
+      orderBy: 'date DESC',
+    );
+    return result.map((json) => DebtRepayment.fromMap(json)).toList();
   }
 
   Future close() async {

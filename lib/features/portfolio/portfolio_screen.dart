@@ -20,6 +20,7 @@ import 'package:koin/core/widgets/pressable_scale.dart';
 import 'package:koin/features/savings/add_savings_goal_screen.dart';
 import 'package:koin/features/savings/savings_details_screen.dart';
 import 'package:koin/core/widgets/koin_segmented_control.dart';
+import 'package:koin/features/debts/debts_tab.dart';
 
 class PortfolioScreen extends ConsumerStatefulWidget {
   const PortfolioScreen({super.key});
@@ -33,8 +34,8 @@ class _PortfolioScreenState extends ConsumerState<PortfolioScreen>
   late TabController _tabController;
   bool _showEntranceAnimations = true;
 
-  // Add more tabs here in the future (e.g., 'Investments', 'Debts')
-  static const _tabs = ['Accounts', 'Goals'];
+  // Add more tabs here in the future (e.g., 'Investments')
+  static const _tabs = ['Accounts', 'Goals', 'Debts'];
 
   @override
   void initState() {
@@ -81,6 +82,7 @@ class _PortfolioScreenState extends ConsumerState<PortfolioScreen>
             children: [
               _buildAccountsTab(context, currency),
               _buildSavingsTab(context),
+              const DebtsTab(),
             ],
           ),
         ),
@@ -144,6 +146,7 @@ class _PortfolioScreenState extends ConsumerState<PortfolioScreen>
         segments: [
           const KoinSegmentItem(label: 'Accounts'),
           const KoinSegmentItem(label: 'Goals'),
+          const KoinSegmentItem(label: 'Debts'),
         ],
       ),
     );
