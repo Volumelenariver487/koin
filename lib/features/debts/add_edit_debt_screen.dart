@@ -122,26 +122,10 @@ class _AddEditDebtScreenState extends ConsumerState<AddEditDebtScreen>
       }
     } else {
       await ref.read(debtsProvider.notifier).addDebt(debt);
-      if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(const SnackBar(content: Text('Debt created')));
-      }
     }
 
     if (mounted) {
       HapticService.light();
-      Navigator.pop(context);
-    }
-  }
-
-  void _delete() async {
-    HapticService.heavy();
-    await ref.read(debtsProvider.notifier).deleteDebt(widget.debt!.id);
-    if (mounted) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('Debt deleted')));
       Navigator.pop(context);
     }
   }
@@ -312,7 +296,6 @@ class _AddEditDebtScreenState extends ConsumerState<AddEditDebtScreen>
     final topPadding = MediaQuery.paddingOf(context).top;
     final settings = ref.read(settingsProvider);
     final currency = settings.currency;
-    final isEdit = widget.debt != null;
 
     return Container(
       decoration: BoxDecoration(
@@ -329,22 +312,7 @@ class _AddEditDebtScreenState extends ConsumerState<AddEditDebtScreen>
           Gap(topPadding + 4),
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 20),
-            child: Row(
-              children: [
-                const KoinBackButton(),
-                const Spacer(),
-                if (isEdit)
-                  IconButton(
-                    onPressed: _delete,
-                    icon: Icon(
-                      Icons.delete_rounded,
-                      color: AppTheme.errorColor(
-                        context,
-                      ).withValues(alpha: 0.8),
-                    ),
-                  ),
-              ],
-            ),
+            child: Row(children: [const KoinBackButton(), const Spacer()]),
           ),
           const Gap(8),
 

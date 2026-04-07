@@ -37,31 +37,59 @@ class DatabaseHelper {
 
   Future _onUpgrade(Database db, int oldVersion, int newVersion) async {
     if (oldVersion < 2) {
-      await db.execute(
-        'ALTER TABLE transactions ADD COLUMN accountId TEXT DEFAULT "default_account"',
-      );
+      try {
+        await db.execute(
+          'ALTER TABLE transactions ADD COLUMN accountId TEXT DEFAULT "default_account"',
+        );
+      } catch (e) {
+        // Column might already exist
+      }
       await _createAccountsTable(db);
       await _insertDefaultAccounts(db);
     }
     if (oldVersion < 3) {
-      await db.execute('ALTER TABLE transactions ADD COLUMN toAccountId TEXT');
+      try {
+        await db.execute(
+          'ALTER TABLE transactions ADD COLUMN toAccountId TEXT',
+        );
+      } catch (e) {
+        // Column might already exist
+      }
     }
     if (oldVersion < 4) {
       await _createSavingsTables(db);
     }
     if (oldVersion < 5) {
-      await db.execute('ALTER TABLE categories ADD COLUMN budget REAL');
+      try {
+        await db.execute('ALTER TABLE categories ADD COLUMN budget REAL');
+      } catch (e) {
+        // Column might already exist
+      }
     }
     if (oldVersion < 6) {
-      await db.execute(
-        'ALTER TABLE categories ADD COLUMN type TEXT DEFAULT "expense"',
-      );
+      try {
+        await db.execute(
+          'ALTER TABLE categories ADD COLUMN type TEXT DEFAULT "expense"',
+        );
+      } catch (e) {
+        // Column might already exist
+      }
     }
     if (oldVersion < 7) {
-      await db.execute('ALTER TABLE categories ADD COLUMN budgetPercent REAL');
-      await db.execute(
-        'ALTER TABLE categories ADD COLUMN isPercentBudget INTEGER DEFAULT 0',
-      );
+      try {
+        await db.execute(
+          'ALTER TABLE categories ADD COLUMN budgetPercent REAL',
+        );
+      } catch (e) {
+        // Column might already exist
+      }
+      try {
+        await db.execute(
+          'ALTER TABLE categories ADD COLUMN isPercentBudget INTEGER DEFAULT 0',
+        );
+      } catch (e) {
+        // Column might already exist
+      }
     }
     if (oldVersion < 8) {
       try {
@@ -82,9 +110,13 @@ class DatabaseHelper {
       }
     }
     if (oldVersion < 10) {
-      await db.execute(
-        'ALTER TABLE categories ADD COLUMN position INTEGER DEFAULT 0',
-      );
+      try {
+        await db.execute(
+          'ALTER TABLE categories ADD COLUMN position INTEGER DEFAULT 0',
+        );
+      } catch (e) {
+        // Column might already exist
+      }
     }
     if (oldVersion < 11) {
       await db.execute('''
@@ -95,9 +127,13 @@ CREATE TABLE app_settings (
 ''');
     }
     if (oldVersion < 12) {
-      await db.execute(
-        'ALTER TABLE savings_goals ADD COLUMN linkedAccountId TEXT',
-      );
+      try {
+        await db.execute(
+          'ALTER TABLE savings_goals ADD COLUMN linkedAccountId TEXT',
+        );
+      } catch (e) {
+        // Column might already exist
+      }
     }
     if (oldVersion < 13) {
       // Rename default "Dining" to "Food"
@@ -112,12 +148,20 @@ CREATE TABLE app_settings (
       await _createDebtsTables(db);
     }
     if (oldVersion < 16) {
-      await db.execute('ALTER TABLE planned_payments ADD COLUMN notes TEXT');
+      try {
+        await db.execute('ALTER TABLE planned_payments ADD COLUMN notes TEXT');
+      } catch (e) {
+        // Column might already exist
+      }
     }
     if (oldVersion < 17) {
-      await db.execute(
-        'ALTER TABLE debts ADD COLUMN frequency TEXT DEFAULT "monthly"',
-      );
+      try {
+        await db.execute(
+          'ALTER TABLE debts ADD COLUMN frequency TEXT DEFAULT "monthly"',
+        );
+      } catch (e) {
+        // Column might already exist
+      }
     }
   }
 
@@ -395,6 +439,7 @@ CREATE TABLE transactions (
       await txn.delete('planned_payments');
       await txn.delete('debt_repayments');
       await txn.delete('debts');
+      await txn.delete('app_settings');
     });
   }
 

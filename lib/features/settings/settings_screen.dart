@@ -13,9 +13,12 @@ import 'package:koin/core/providers/transaction_provider.dart';
 import 'package:koin/core/providers/account_provider.dart';
 import 'package:koin/core/providers/category_provider.dart';
 import 'package:koin/core/providers/savings_provider.dart';
+import 'package:koin/core/providers/debt_provider.dart';
+import 'package:koin/core/providers/planned_payment_provider.dart';
 import 'package:file_saver/file_saver.dart';
 import 'package:intl/intl.dart';
 import 'package:koin/core/utils/snackbar_utils.dart';
+import 'package:koin/core/providers/dashboard_provider.dart';
 import 'package:koin/core/widgets/koin_back_button.dart';
 import 'package:koin/core/widgets/pressable_scale.dart';
 
@@ -327,7 +330,7 @@ class SettingsScreen extends ConsumerWidget {
                   _buildSettingTile(
                     context,
                     title: 'Delete All Data',
-                    subtitle: 'Clear all transactions, savings, and goals',
+                    subtitle: 'Clear all records, accounts, and categories',
                     icon: Icons.delete_forever_rounded,
                     isDestructive: true,
                     onTap: () => _handleDeleteAllData(context, ref),
@@ -467,8 +470,12 @@ class SettingsScreen extends ConsumerWidget {
           'currency_code': prefs.getString('currency_code')!,
         if (prefs.getInt('theme_color') != null)
           'theme_color': prefs.getInt('theme_color')!.toString(),
-        if (prefs.getBool('is_dark_mode') != null)
-          'is_dark_mode': prefs.getBool('is_dark_mode')!.toString(),
+        if (prefs.getInt('theme_mode') != null)
+          'theme_mode': prefs.getInt('theme_mode')!.toString(),
+        if (prefs.getInt('analysis_filter_index') != null)
+          'analysis_filter_index': prefs
+              .getInt('analysis_filter_index')!
+              .toString(),
       };
       await DatabaseHelper.instance.saveSettingsToDb(settings);
 
@@ -553,10 +560,18 @@ class SettingsScreen extends ConsumerWidget {
               int.parse(settingsFromDb['theme_color']!),
             );
           }
-          if (settingsFromDb.containsKey('is_dark_mode')) {
-            await prefs.setBool(
-              'is_dark_mode',
-              settingsFromDb['is_dark_mode'] == 'true',
+          if (settingsFromDb.containsKey('theme_mode') &&
+              settingsFromDb['theme_mode']!.isNotEmpty) {
+            await prefs.setInt(
+              'theme_mode',
+              int.parse(settingsFromDb['theme_mode']!),
+            );
+          }
+          if (settingsFromDb.containsKey('analysis_filter_index') &&
+              settingsFromDb['analysis_filter_index']!.isNotEmpty) {
+            await prefs.setInt(
+              'analysis_filter_index',
+              int.parse(settingsFromDb['analysis_filter_index']!),
             );
           }
 
@@ -567,6 +582,10 @@ class SettingsScreen extends ConsumerWidget {
           ref.invalidate(accountProvider);
           ref.invalidate(categoriesProvider);
           ref.invalidate(savingsGoalsProvider);
+          ref.invalidate(debtsProvider);
+          ref.invalidate(plannedPaymentProvider);
+          // ignore: unused_result
+          ref.refresh(dashboardStatsProvider);
           KoinSnackBar.success(
             context,
             'Data restored successfully!',
@@ -638,6 +657,8 @@ class SettingsScreen extends ConsumerWidget {
       ref.invalidate(accountProvider);
       ref.invalidate(categoriesProvider);
       ref.invalidate(savingsGoalsProvider);
+      ref.invalidate(debtsProvider);
+      ref.invalidate(plannedPaymentProvider);
 
       if (context.mounted) {
         KoinSnackBar.success(
@@ -667,6 +688,8 @@ class SettingsScreen extends ConsumerWidget {
       ref.invalidate(accountProvider);
       ref.invalidate(categoriesProvider);
       ref.invalidate(savingsGoalsProvider);
+      ref.invalidate(debtsProvider);
+      ref.invalidate(plannedPaymentProvider);
 
       if (context.mounted) {
         KoinSnackBar.success(

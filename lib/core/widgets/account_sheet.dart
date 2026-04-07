@@ -23,10 +23,7 @@ class _AccountSheetContent extends StatefulWidget {
   final WidgetRef ref;
   final Account? account;
 
-  const _AccountSheetContent({
-    required this.ref,
-    this.account,
-  });
+  const _AccountSheetContent({required this.ref, this.account});
 
   @override
   State<_AccountSheetContent> createState() => _AccountSheetContentState();
@@ -73,11 +70,13 @@ class _AccountSheetContentState extends State<_AccountSheetContent> {
     balanceController = TextEditingController(
       text: isEditing ? widget.account!.initialBalance.toString() : '',
     );
-    selectedIcon = widget.account?.iconCodePoint ?? Icons.account_balance_wallet_rounded.codePoint;
+    selectedIcon =
+        widget.account?.iconCodePoint ??
+        Icons.account_balance_wallet_rounded.codePoint;
     excludeFromTotal = widget.account?.excludeFromTotal ?? false;
 
     // We'll initialize selectedColor in didChangeDependencies since it needs context
-    
+
     // Auto-scroll to selected icon and color
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _scrollToSelectedIcon();
@@ -89,10 +88,8 @@ class _AccountSheetContentState extends State<_AccountSheetContent> {
     final index = icons.indexWhere((icon) => icon.codePoint == selectedIcon);
     if (index != -1 && _iconScrollController.hasClients) {
       final offset = index * 60.0;
-      final targetOffset = (offset - MediaQuery.of(context).size.width / 2 + 30).clamp(
-        0.0,
-        _iconScrollController.position.maxScrollExtent,
-      );
+      final targetOffset = (offset - MediaQuery.of(context).size.width / 2 + 30)
+          .clamp(0.0, _iconScrollController.position.maxScrollExtent);
       _iconScrollController.animateTo(
         targetOffset,
         duration: const Duration(milliseconds: 600),
@@ -102,14 +99,14 @@ class _AccountSheetContentState extends State<_AccountSheetContent> {
   }
 
   void _scrollToSelectedColor() {
-    final index = AppTheme.accentColors.indexWhere((c) => c.toARGB32() == selectedColor.toARGB32());
+    final index = AppTheme.accentColors.indexWhere(
+      (c) => c.toARGB32() == selectedColor.toARGB32(),
+    );
     if (index != -1 && _colorScrollController.hasClients) {
       // 44px circle + 12px margin = 56px
       final offset = index * 56.0;
-      final targetOffset = (offset - MediaQuery.of(context).size.width / 2 + 28).clamp(
-        0.0,
-        _colorScrollController.position.maxScrollExtent,
-      );
+      final targetOffset = (offset - MediaQuery.of(context).size.width / 2 + 28)
+          .clamp(0.0, _colorScrollController.position.maxScrollExtent);
       _colorScrollController.animateTo(
         targetOffset,
         duration: const Duration(milliseconds: 600),
@@ -152,7 +149,12 @@ class _AccountSheetContentState extends State<_AccountSheetContent> {
         borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
       ),
       child: SingleChildScrollView(
-        padding: EdgeInsets.fromLTRB(24, 16, 24, MediaQuery.of(context).viewInsets.bottom + 24),
+        padding: EdgeInsets.fromLTRB(
+          24,
+          16,
+          24,
+          MediaQuery.of(context).viewInsets.bottom + 24,
+        ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -170,7 +172,10 @@ class _AccountSheetContentState extends State<_AccountSheetContent> {
               children: [
                 Text(
                   isEditing ? 'Edit Account' : 'Add Account',
-                  style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w700),
+                  style: const TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.w700,
+                  ),
                 ),
                 if (isEditing)
                   IconButton(
@@ -179,14 +184,17 @@ class _AccountSheetContentState extends State<_AccountSheetContent> {
                       final confirmed = await ConfirmationSheet.show(
                         context: context,
                         title: 'Delete Account?',
-                        description: 'All transactions associated with this account will be unlinked. This cannot be undone.',
+                        description:
+                            'All transactions associated with this account will be unlinked. This cannot be undone.',
                         confirmLabel: 'Delete',
                         confirmColor: AppTheme.expenseColor(context),
                         icon: Icons.delete_forever_rounded,
                         isDanger: true,
                       );
                       if (confirmed == true && context.mounted) {
-                        widget.ref.read(accountProvider.notifier).deleteAccount(widget.account!.id);
+                        widget.ref
+                            .read(accountProvider.notifier)
+                            .deleteAccount(widget.account!.id);
                         Navigator.pop(context);
                       }
                     },
@@ -210,12 +218,23 @@ class _AccountSheetContentState extends State<_AccountSheetContent> {
                 labelText: 'Initial Balance',
                 prefixIcon: Icon(Icons.payments_outlined),
               ),
-              keyboardType: const TextInputType.numberWithOptions(decimal: true),
+              keyboardType: const TextInputType.numberWithOptions(
+                decimal: true,
+              ),
             ),
             const Gap(20),
             Align(
               alignment: Alignment.centerLeft,
-              child: Text('Icon', style: TextStyle(color: AppTheme.textLightColor(context).withValues(alpha: 0.7), fontSize: 13, fontWeight: FontWeight.w600)),
+              child: Text(
+                'Icon',
+                style: TextStyle(
+                  color: AppTheme.textLightColor(
+                    context,
+                  ).withValues(alpha: 0.7),
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
             ),
             const Gap(12),
             SizedBox(
@@ -237,16 +256,26 @@ class _AccountSheetContentState extends State<_AccountSheetContent> {
                       margin: const EdgeInsets.only(right: 12),
                       padding: const EdgeInsets.all(10),
                       decoration: BoxDecoration(
-                        color: isSelected ? selectedColor.withValues(alpha: 0.1) : AppTheme.dividerColor(context).withValues(alpha: 0.1),
+                        color: isSelected
+                            ? selectedColor.withValues(alpha: 0.1)
+                            : AppTheme.dividerColor(
+                                context,
+                              ).withValues(alpha: 0.1),
                         shape: BoxShape.circle,
                         border: Border.all(
-                          color: isSelected ? selectedColor : Colors.transparent,
+                          color: isSelected
+                              ? selectedColor
+                              : Colors.transparent,
                           width: 2,
                         ),
                       ),
                       child: Icon(
                         icon,
-                        color: isSelected ? selectedColor : AppTheme.textLightColor(context).withValues(alpha: 0.5),
+                        color: isSelected
+                            ? selectedColor
+                            : AppTheme.textLightColor(
+                                context,
+                              ).withValues(alpha: 0.5),
                         size: 24,
                       ),
                     ),
@@ -257,7 +286,16 @@ class _AccountSheetContentState extends State<_AccountSheetContent> {
             const Gap(20),
             Align(
               alignment: Alignment.centerLeft,
-              child: Text('Color', style: TextStyle(color: AppTheme.textLightColor(context).withValues(alpha: 0.7), fontSize: 13, fontWeight: FontWeight.w600)),
+              child: Text(
+                'Color',
+                style: TextStyle(
+                  color: AppTheme.textLightColor(
+                    context,
+                  ).withValues(alpha: 0.7),
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
             ),
             const Gap(12),
             SizedBox(
@@ -285,14 +323,28 @@ class _AccountSheetContentState extends State<_AccountSheetContent> {
                           color: c,
                           shape: BoxShape.circle,
                           border: Border.all(
-                            color: isSelected ? Colors.white : Colors.transparent,
+                            color: isSelected
+                                ? Colors.white
+                                : Colors.transparent,
                             width: 3,
                           ),
                           boxShadow: isSelected
-                              ? [BoxShadow(color: c.withValues(alpha: 0.4), blurRadius: 10, offset: const Offset(0, 4))]
+                              ? [
+                                  BoxShadow(
+                                    color: c.withValues(alpha: 0.4),
+                                    blurRadius: 10,
+                                    offset: const Offset(0, 4),
+                                  ),
+                                ]
                               : null,
                         ),
-                        child: isSelected ? const Icon(Icons.check_rounded, color: Colors.white, size: 22) : null,
+                        child: isSelected
+                            ? const Icon(
+                                Icons.check_rounded,
+                                color: Colors.white,
+                                size: 22,
+                              )
+                            : null,
                       ),
                     ),
                   );
@@ -304,19 +356,32 @@ class _AccountSheetContentState extends State<_AccountSheetContent> {
               decoration: BoxDecoration(
                 color: AppTheme.dividerColor(context).withValues(alpha: 0.05),
                 borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: AppTheme.dividerColor(context).withValues(alpha: 0.1)),
+                border: Border.all(
+                  color: AppTheme.dividerColor(context).withValues(alpha: 0.1),
+                ),
               ),
               child: SwitchListTile(
-                title: const Text('Exclude from Total Balance', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
-                subtitle: const Text('Hide this account\'s balance from the dashboard total', style: TextStyle(fontSize: 12)),
+                title: const Text(
+                  'Make Account Private',
+                  style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
+                ),
+                subtitle: const Text(
+                  'This will obfuscate the balance and exclude it from the total balance amount',
+                  style: TextStyle(fontSize: 12),
+                ),
                 value: excludeFromTotal,
                 onChanged: (value) {
                   HapticService.light();
                   setState(() => excludeFromTotal = value);
                 },
                 activeThumbColor: AppTheme.primaryColor(context),
-                contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                contentPadding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 4,
+                ),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16),
+                ),
               ),
             ),
             const Gap(28),
@@ -334,19 +399,28 @@ class _AccountSheetContentState extends State<_AccountSheetContent> {
                       final updatedAccount = Account(
                         id: isEditing ? widget.account!.id : const Uuid().v4(),
                         name: nameController.text,
-                        initialBalance: double.tryParse(balanceController.text) ?? 0.0,
+                        initialBalance:
+                            double.tryParse(balanceController.text) ?? 0.0,
                         iconCodePoint: selectedIcon,
-                        colorHex: '#${selectedColor.toARGB32().toRadixString(16).padLeft(8, '0').substring(2)}',
+                        colorHex:
+                            '#${selectedColor.toARGB32().toRadixString(16).padLeft(8, '0').substring(2)}',
                         excludeFromTotal: excludeFromTotal,
-                        position: isEditing ? widget.account!.position : widget.ref.read(accountProvider).value?.length ?? 0,
+                        position: isEditing
+                            ? widget.account!.position
+                            : widget.ref.read(accountProvider).value?.length ??
+                                  0,
                       );
 
                       if (isEditing) {
-                        await widget.ref.read(accountProvider.notifier).updateAccount(updatedAccount);
+                        await widget.ref
+                            .read(accountProvider.notifier)
+                            .updateAccount(updatedAccount);
                       } else {
-                        await widget.ref.read(accountProvider.notifier).addAccount(updatedAccount);
+                        await widget.ref
+                            .read(accountProvider.notifier)
+                            .addAccount(updatedAccount);
                       }
-                      
+
                       if (context.mounted) {
                         Navigator.pop(context);
                       }
@@ -361,7 +435,11 @@ class _AccountSheetContentState extends State<_AccountSheetContent> {
                   ),
                   child: Text(
                     isEditing ? 'Update Account' : 'Create Account',
-                    style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: Colors.white),
+                    style: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w700,
+                      color: Colors.white,
+                    ),
                   ),
                 ),
               ),
@@ -370,6 +448,5 @@ class _AccountSheetContentState extends State<_AccountSheetContent> {
         ),
       ),
     );
-
   }
 }

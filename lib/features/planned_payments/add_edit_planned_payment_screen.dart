@@ -17,6 +17,7 @@ import 'package:uuid/uuid.dart';
 import 'package:koin/core/widgets/koin_back_button.dart';
 import 'package:koin/core/widgets/pressable_scale.dart';
 import 'package:koin/core/providers/settings_provider.dart';
+import 'package:koin/core/widgets/confirmation_sheet.dart';
 
 class AddEditPlannedPaymentScreen extends ConsumerStatefulWidget {
   final PlannedPayment? payment;
@@ -146,6 +147,28 @@ class _AddEditPlannedPaymentScreenState
     }
   }
 
+  Future<void> _showDeleteConfirmation() async {
+    final confirmed = await ConfirmationSheet.show(
+      context: context,
+      title: 'Delete Subscription?',
+      description:
+          'Are you sure you want to delete this subscription? This action cannot be undone.',
+      confirmLabel: 'Delete Subscription',
+      confirmColor: AppTheme.expenseColor(context),
+      icon: Icons.delete_outline_rounded,
+      isDanger: true,
+    );
+
+    if (confirmed == true && mounted) {
+      await ref
+          .read(plannedPaymentProvider.notifier)
+          .deletePlannedPayment(widget.payment!.id);
+      if (mounted) {
+        Navigator.pop(context);
+      }
+    }
+  }
+
   Widget _buildSelectionRow(
     BuildContext context, {
     required IconData fallbackIcon,
@@ -244,7 +267,9 @@ class _AddEditPlannedPaymentScreenState
                 const Gap(4),
                 Icon(
                   Icons.chevron_right_rounded,
-                  color: AppTheme.textLightColor(context).withValues(alpha: 0.4),
+                  color: AppTheme.textLightColor(
+                    context,
+                  ).withValues(alpha: 0.4),
                   size: 22,
                 ),
               ],
@@ -293,7 +318,9 @@ class _AddEditPlannedPaymentScreenState
                 Icon(
                   icon,
                   size: 14,
-                  color: AppTheme.textLightColor(context).withValues(alpha: 0.6),
+                  color: AppTheme.textLightColor(
+                    context,
+                  ).withValues(alpha: 0.6),
                 ),
                 const Gap(6),
                 Text(
@@ -301,7 +328,9 @@ class _AddEditPlannedPaymentScreenState
                   style: TextStyle(
                     fontSize: 12,
                     fontWeight: FontWeight.w600,
-                    color: AppTheme.textLightColor(context).withValues(alpha: 0.6),
+                    color: AppTheme.textLightColor(
+                      context,
+                    ).withValues(alpha: 0.6),
                   ),
                 ),
               ],
@@ -335,9 +364,23 @@ class _AddEditPlannedPaymentScreenState
       child: Column(
         children: [
           Gap(topPadding + 4),
-          const Padding(
-            padding: EdgeInsets.symmetric(horizontal: 20),
-            child: Row(children: [KoinBackButton(), Spacer()]),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 20),
+            child: Row(
+              children: [
+                const KoinBackButton(),
+                const Spacer(),
+                if (widget.payment != null)
+                  IconButton(
+                    icon: Icon(
+                      Icons.delete_outline_rounded,
+                      color: AppTheme.expenseColor(context),
+                      size: 24,
+                    ),
+                    onPressed: _showDeleteConfirmation,
+                  ),
+              ],
+            ),
           ),
           const Gap(8),
 
@@ -364,7 +407,9 @@ class _AddEditPlannedPaymentScreenState
                 filled: true,
                 contentPadding: EdgeInsets.zero,
                 hintStyle: TextStyle(
-                  color: AppTheme.textLightColor(context).withValues(alpha: 0.4),
+                  color: AppTheme.textLightColor(
+                    context,
+                  ).withValues(alpha: 0.4),
                 ),
               ),
               onChanged: (_) => setState(() {}),
@@ -413,7 +458,9 @@ class _AddEditPlannedPaymentScreenState
                     fillColor: Colors.transparent,
                     filled: true,
                     contentPadding: EdgeInsets.zero,
-                    hintStyle: TextStyle(color: primaryColor.withValues(alpha: 0.35)),
+                    hintStyle: TextStyle(
+                      color: primaryColor.withValues(alpha: 0.35),
+                    ),
                   ),
                   onChanged: (_) => setState(() {}),
                 ),
@@ -429,8 +476,8 @@ class _AddEditPlannedPaymentScreenState
             margin: const EdgeInsets.only(top: 8, bottom: 24),
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(2),
-              color: primaryColor.withValues(alpha: 
-                _amountController.text.isNotEmpty ? 0.35 : 0.15,
+              color: primaryColor.withValues(
+                alpha: _amountController.text.isNotEmpty ? 0.35 : 0.15,
               ),
             ),
           ),
@@ -708,7 +755,9 @@ class _AddEditPlannedPaymentScreenState
                                 boxShadow: isSelected
                                     ? [
                                         BoxShadow(
-                                          color: primaryColor.withValues(alpha: 0.3),
+                                          color: primaryColor.withValues(
+                                            alpha: 0.3,
+                                          ),
                                           blurRadius: 8,
                                           offset: const Offset(0, 4),
                                         ),
@@ -1124,4 +1173,3 @@ class _PremiumSheetItem extends StatelessWidget {
     );
   }
 }
-

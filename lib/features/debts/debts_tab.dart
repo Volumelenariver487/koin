@@ -10,6 +10,7 @@ import 'package:koin/core/theme.dart';
 import 'package:koin/core/utils/haptic_utils.dart';
 import 'package:koin/core/utils/slide_up_route.dart';
 import 'package:koin/core/widgets/pressable_scale.dart';
+import 'package:koin/core/widgets/confirmation_sheet.dart';
 import 'package:koin/features/debts/add_edit_debt_screen.dart';
 import 'package:koin/features/debts/debt_details_screen.dart';
 
@@ -172,8 +173,21 @@ class DebtsTab extends ConsumerWidget {
               ),
               const Gap(12),
               ...owedToMe.asMap().entries.map(
-                (e) =>
-                    DebtCard(debt: e.value, currencyFormat: fmt, index: e.key),
+                (e) => Dismissible(
+                  key: Key(e.value.id),
+                  direction: DismissDirection.endToStart,
+                  confirmDismiss: (direction) =>
+                      _showDeleteConfirmation(context, ref, e.value),
+                  onDismissed: (direction) {
+                    ref.read(debtsProvider.notifier).deleteDebt(e.value.id);
+                  },
+                  background: _buildDismissBackground(context),
+                  child: DebtCard(
+                    debt: e.value,
+                    currencyFormat: fmt,
+                    index: e.key,
+                  ),
+                ),
               ),
               const Gap(20),
             ],
@@ -186,8 +200,21 @@ class DebtsTab extends ConsumerWidget {
               ),
               const Gap(12),
               ...iOwe.asMap().entries.map(
-                (e) =>
-                    DebtCard(debt: e.value, currencyFormat: fmt, index: e.key),
+                (e) => Dismissible(
+                  key: Key(e.value.id),
+                  direction: DismissDirection.endToStart,
+                  confirmDismiss: (direction) =>
+                      _showDeleteConfirmation(context, ref, e.value),
+                  onDismissed: (direction) {
+                    ref.read(debtsProvider.notifier).deleteDebt(e.value.id);
+                  },
+                  background: _buildDismissBackground(context),
+                  child: DebtCard(
+                    debt: e.value,
+                    currencyFormat: fmt,
+                    index: e.key,
+                  ),
+                ),
               ),
               const Gap(20),
             ],
@@ -270,6 +297,40 @@ class DebtsTab extends ConsumerWidget {
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  Future<bool?> _showDeleteConfirmation(
+    BuildContext context,
+    WidgetRef ref,
+    Debt debt,
+  ) async {
+    return await ConfirmationSheet.show(
+      context: context,
+      title: 'Delete Debt?',
+      description:
+          'Are you sure you want to delete this debt with "${debt.personName}"? This action cannot be undone.',
+      confirmLabel: 'Delete Debt',
+      confirmColor: AppTheme.expenseColor(context),
+      icon: Icons.delete_outline_rounded,
+      isDanger: true,
+    );
+  }
+
+  Widget _buildDismissBackground(BuildContext context) {
+    return Container(
+      alignment: Alignment.centerRight,
+      padding: const EdgeInsets.only(right: 28),
+      margin: const EdgeInsets.only(bottom: 12),
+      decoration: BoxDecoration(
+        color: AppTheme.expenseColor(context),
+        borderRadius: BorderRadius.circular(22),
+      ),
+      child: const Icon(
+        Icons.delete_outline_rounded,
+        color: Colors.white,
+        size: 28,
       ),
     );
   }

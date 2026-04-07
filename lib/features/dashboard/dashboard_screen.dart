@@ -711,18 +711,29 @@ class DashboardScreen extends ConsumerWidget {
             ],
           ),
           const Spacer(),
-          AnimatedCounter(
-            value: balance,
-            formatter: (v) =>
-                NumberFormat.currency(symbol: currency.symbol).format(v),
-            style: const TextStyle(
-              fontWeight: FontWeight.w800,
-              fontSize: 17,
-              letterSpacing: -0.5,
+          if (account.excludeFromTotal)
+            Text(
+              '••••',
+              style: TextStyle(
+                color: AppTheme.textColor(context).withValues(alpha: 0.6),
+                fontWeight: FontWeight.w800,
+                fontSize: 18,
+                letterSpacing: 2,
+              ),
+            )
+          else
+            AnimatedCounter(
+              value: balance,
+              formatter: (v) =>
+                  NumberFormat.currency(symbol: currency.symbol).format(v),
+              style: const TextStyle(
+                fontWeight: FontWeight.w800,
+                fontSize: 17,
+                letterSpacing: -0.5,
+              ),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
             ),
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-          ),
         ],
       ),
     );

@@ -230,42 +230,45 @@ class _AddSavingsGoalScreenState extends ConsumerState<AddSavingsGoalScreen> {
                         ),
                       ],
                     ).animate().fade(delay: 50.ms).slideY(begin: 0.1),
-                    const Gap(12),
-                    // Daily estimate card
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 16,
-                        vertical: 14,
-                      ),
-                      decoration: BoxDecoration(
-                        color: primaryColor.withValues(alpha: 0.08),
-                        borderRadius: BorderRadius.circular(16),
-                        border: Border.all(
-                          color: primaryColor.withValues(alpha: 0.15),
+                    if (_amountController.text.isNotEmpty) ...[
+                      const Gap(12),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 14,
                         ),
-                      ),
-                      child: Row(
-                        children: [
-                          Icon(
-                            Icons.insights_rounded,
-                            size: 18,
-                            color: primaryColor,
+                        decoration: BoxDecoration(
+                          color: primaryColor.withValues(alpha: 0.08),
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(
+                            color: primaryColor.withValues(alpha: 0.15),
                           ),
-                          const Gap(12),
-                          Expanded(
-                            child: Text(
-                              'Save ${_getDailyEstimate()}/day to reach your goal in $_totalDays days',
-                              style: TextStyle(
-                                fontSize: 13,
-                                fontWeight: FontWeight.w600,
-                                color: primaryColor,
+                        ),
+                        child: Row(
+                          children: [
+                            Icon(
+                              Icons.insights_rounded,
+                              size: 18,
+                              color: primaryColor,
+                            ),
+                            const Gap(12),
+                            Expanded(
+                              child: Text(
+                                'Save ${_getDailyEstimate()}/day to reach your goal in $_totalDays days',
+                                style: TextStyle(
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w600,
+                                  color: primaryColor,
+                                ),
                               ),
                             ),
-                          ),
-                        ],
-                      ),
-                    ).animate().fade(delay: 100.ms).slideY(begin: 0.1),
-                    const Gap(32),
+                          ],
+                        ),
+                      ).animate().fade(delay: 100.ms).slideY(begin: 0.1),
+                      const Gap(32),
+                    ] else ...[
+                      const Gap(32),
+                    ],
 
                     // Additional Details
                     _buildSectionTitle(context, 'Details'),

@@ -14,6 +14,7 @@ import 'package:koin/features/debts/add_edit_debt_screen.dart';
 import 'package:koin/core/models/account.dart';
 import 'package:koin/core/providers/account_provider.dart';
 import 'package:koin/core/utils/icon_utils.dart';
+import 'package:koin/core/widgets/confirmation_sheet.dart';
 import 'package:uuid/uuid.dart';
 
 class DebtDetailsScreen extends ConsumerStatefulWidget {
@@ -33,6 +34,27 @@ class _DebtDetailsScreenState extends ConsumerState<DebtDetailsScreen> {
       backgroundColor: Colors.transparent,
       builder: (context) => _AddRepaymentSheet(debt: debt),
     );
+  }
+
+  Future<void> _showDeleteConfirmation(BuildContext context, Debt debt) async {
+    final confirmed = await ConfirmationSheet.show(
+      context: context,
+      title: 'Delete Debt?',
+      description:
+          'Are you sure you want to delete this debt? This action cannot be undone and will delete all associated payment history.',
+      confirmLabel: 'Delete Debt',
+      confirmColor: AppTheme.errorColor(context),
+      icon: Icons.delete_outline_rounded,
+      isDanger: true,
+    );
+
+    if (confirmed == true && mounted) {
+      HapticService.heavy();
+      await ref.read(debtsProvider.notifier).deleteDebt(debt.id);
+      if (mounted) {
+        Navigator.pop(context);
+      }
+    }
   }
 
   @override
@@ -57,20 +79,30 @@ class _DebtDetailsScreenState extends ConsumerState<DebtDetailsScreen> {
         actions: [
           debtsAsync.whenOrNull(
                 data: (debts) {
-                  final debt = debts.firstWhere(
-                    (d) => d.id == widget.debtId,
-                    orElse: () => debts.first,
+                  final debt = debts.cast<Debt?>().firstWhere(
+                    (d) => d?.id == widget.debtId,
+                    orElse: () => null,
                   );
-                  if (debt.id == widget.debtId) {
-                    return IconButton(
-                      icon: const Icon(Icons.edit_rounded),
-                      onPressed: () {
-                        HapticService.light();
-                        Navigator.push(
-                          context,
-                          SlideUpRoute(page: AddEditDebtScreen(debt: debt)),
-                        );
-                      },
+                  if (debt != null && debt.id == widget.debtId) {
+                    return Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        IconButton(
+                          icon: const Icon(Icons.edit_rounded),
+                          onPressed: () {
+                            HapticService.light();
+                            Navigator.push(
+                              context,
+                              SlideUpRoute(page: AddEditDebtScreen(debt: debt)),
+                            );
+                          },
+                        ),
+                        IconButton(
+                          icon: const Icon(Icons.delete_outline_rounded),
+                          onPressed: () =>
+                              _showDeleteConfirmation(context, debt),
+                        ),
+                      ],
                     );
                   }
                   return const SizedBox();
@@ -81,11 +113,11 @@ class _DebtDetailsScreenState extends ConsumerState<DebtDetailsScreen> {
       ),
       body: debtsAsync.when(
         data: (debts) {
-          final debt = debts.firstWhere(
-            (d) => d.id == widget.debtId,
-            orElse: () => debts.first,
+          final debt = debts.cast<Debt?>().firstWhere(
+            (d) => d?.id == widget.debtId,
+            orElse: () => null,
           );
-          if (debt.id != widget.debtId) {
+          if (debt == null) {
             return const Center(child: Text('Debt not found'));
           }
 
