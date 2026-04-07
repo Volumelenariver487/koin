@@ -5,6 +5,7 @@ import 'package:koin/core/models/category.dart';
 import 'package:koin/core/models/account.dart';
 import 'package:koin/core/models/savings_goal.dart';
 import 'package:koin/core/models/savings_log.dart';
+import 'package:koin/core/models/planned_payment.dart';
 import 'package:flutter/material.dart';
 import 'dart:io';
 
@@ -26,7 +27,7 @@ class DatabaseHelper {
 
     return await openDatabase(
       path,
-      version: 13,
+      version: 14,
       onCreate: _createDB,
       onUpgrade: _onUpgrade,
     );
@@ -102,6 +103,33 @@ CREATE TABLE app_settings (
         "UPDATE categories SET name = 'Food' WHERE id = 'cat_dining' AND name = 'Dining'",
       );
     }
+    if (oldVersion < 14) {
+      await _createPlannedPaymentsTable(db);
+    }
+  }
+
+  Future _createPlannedPaymentsTable(Database db) async {
+    const idType = 'TEXT PRIMARY KEY';
+    const textType = 'TEXT NOT NULL';
+    const realType = 'REAL NOT NULL';
+
+    await db.execute('''
+CREATE TABLE planned_payments (
+  id $idType,
+  title $textType,
+  amount $realType,
+  type $textType,
+  categoryId $textType,
+  accountId $textType,
+  startDate $textType,
+  endDate TEXT,
+  nextDate $textType,
+  frequency $textType,
+  isAutoProcess INTEGER DEFAULT 0,
+  FOREIGN KEY (categoryId) REFERENCES categories (id) ON DELETE SET NULL,
+  FOREIGN KEY (accountId) REFERENCES accounts (id) ON DELETE SET NULL
+)
+''');
   }
 
   Future _createSavingsTables(Database db) async {
@@ -199,6 +227,7 @@ CREATE TABLE transactions (
 ''');
 
     await _createSavingsTables(db);
+    await _createPlannedPaymentsTable(db);
 
     // Insert default data
     await _insertDefaultCategories(db);
@@ -314,6 +343,7 @@ CREATE TABLE transactions (
       await txn.delete('savings_goals');
       await txn.delete('categories');
       await txn.delete('accounts');
+      await txn.delete('planned_payments');
     });
   }
 
@@ -528,6 +558,38 @@ CREATE TABLE transactions (
       orderBy: 'date DESC',
     );
     return result.map((json) => SavingsLog.fromMap(json)).toList();
+  }
+
+  // Planned Payments commands
+  Future<PlannedPayment> insertPlannedPayment(PlannedPayment payment) async {
+    final db = await instance.database;
+    await db.insert('planned_payments', payment.toMap());
+    return payment;
+  }
+
+  Future<List<PlannedPayment>> getPlannedPayments() async {
+    final db = await instance.database;
+    final result = await db.query('planned_payments', orderBy: 'nextDate ASC');
+    return result.map((json) => PlannedPayment.fromMap(json)).toList();
+  }
+
+  Future<int> updatePlannedPayment(PlannedPayment payment) async {
+    final db = await instance.database;
+    return await db.update(
+      'planned_payments',
+      payment.toMap(),
+      where: 'id = ?',
+      whereArgs: [payment.id],
+    );
+  }
+
+  Future<int> deletePlannedPayment(String id) async {
+    final db = await instance.database;
+    return await db.delete(
+      'planned_payments',
+      where: 'id = ?',
+      whereArgs: [id],
+    );
   }
 
   // Settings commands
