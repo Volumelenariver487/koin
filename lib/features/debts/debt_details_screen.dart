@@ -36,7 +36,7 @@ class _DebtDetailsScreenState extends ConsumerState<DebtDetailsScreen> {
     );
   }
 
-  Future<void> _showDeleteConfirmation(BuildContext context, Debt debt) async {
+  Future<void> _showDeleteConfirmation(Debt debt) async {
     final confirmed = await ConfirmationSheet.show(
       context: context,
       title: 'Delete Debt?',
@@ -99,8 +99,7 @@ class _DebtDetailsScreenState extends ConsumerState<DebtDetailsScreen> {
                         ),
                         IconButton(
                           icon: const Icon(Icons.delete_outline_rounded),
-                          onPressed: () =>
-                              _showDeleteConfirmation(context, debt),
+                          onPressed: () => _showDeleteConfirmation(debt),
                         ),
                       ],
                     );
