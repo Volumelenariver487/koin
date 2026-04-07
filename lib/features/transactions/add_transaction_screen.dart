@@ -12,6 +12,7 @@ import 'package:koin/core/models/transaction.dart';
 import 'package:koin/core/providers/transaction_provider.dart';
 import 'package:koin/core/providers/category_provider.dart';
 import 'package:koin/core/providers/account_provider.dart';
+import 'package:koin/core/providers/dashboard_provider.dart';
 import 'package:koin/core/providers/settings_provider.dart';
 import 'package:koin/core/theme.dart';
 import 'package:koin/core/widgets/numpad.dart';
@@ -966,6 +967,9 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen>
 
                   return accountsAsync.when(
                     data: (accounts) {
+                      final stats = ref.watch(dashboardStatsProvider);
+                      final currency = ref.watch(settingsProvider).currency;
+
                       if (_selectedAccountId == null && accounts.isNotEmpty) {
                         _selectedAccountId = accounts.first.id;
                       }
@@ -1000,6 +1004,8 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen>
                                   ? 'Choose where the money leaves from'
                                   : 'Choose the account for this transaction',
                               selectedId: _selectedAccountId,
+                              accountBalances: stats.accountBalances,
+                              currencySymbol: currency.symbol,
                               onSelected: (id) => setState(() {
                                 _selectedAccountId = id;
                                 if (_selectedType == TransactionType.transfer &&
@@ -1049,6 +1055,9 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen>
                                           subtitle:
                                               'Choose where the money arrives',
                                           selectedId: _selectedToAccountId,
+                                          accountBalances:
+                                              stats.accountBalances,
+                                          currencySymbol: currency.symbol,
                                           excludeAccountId: _selectedAccountId,
                                           onSelected: (id) => setState(() {
                                             if (_selectedAccountId == id) {
@@ -1242,6 +1251,8 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen>
     required String subtitle,
     required String? selectedId,
     required void Function(String?) onSelected,
+    Map<String, double>? accountBalances,
+    String? currencySymbol,
     String? excludeAccountId,
   }) async {
     final filtered = excludeAccountId == null
@@ -1255,11 +1266,15 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen>
       emptyMessage: filtered.isEmpty ? 'No other accounts available' : null,
       itemBuilder: (context, index) {
         final acc = filtered[index];
+        final balance = accountBalances?[acc.id];
         return _PremiumSheetItem(
           name: acc.name,
           accentColor: acc.color,
           iconCodePoint: acc.iconCodePoint,
           selected: acc.id == selectedId,
+          balance: balance,
+          isPrivate: acc.excludeFromTotal,
+          currencySymbol: currencySymbol,
           onTap: () => Navigator.pop(context, acc.id),
         );
       },
@@ -1279,7 +1294,6 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen>
   }) {
     final bottomInset = MediaQuery.of(context).padding.bottom;
     final maxHeight = MediaQuery.sizeOf(context).height * 0.62;
-    final typeColor = _getTypeColor(context);
 
     return showModalBottomSheet<T>(
       context: context,
@@ -1332,39 +1346,23 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen>
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Row(
-                            children: [
-                              Container(
-                                width: 4,
-                                height: 22,
-                                decoration: BoxDecoration(
-                                  color: typeColor,
-                                  borderRadius: BorderRadius.circular(2),
-                                ),
-                              ),
-                              const Gap(10),
-                              Text(
-                                title,
-                                style: TextStyle(
-                                  fontSize: 22,
-                                  fontWeight: FontWeight.w800,
-                                  letterSpacing: -0.6,
-                                  color: AppTheme.textColor(sheetContext),
-                                ),
-                              ),
-                            ],
+                          Text(
+                            title,
+                            style: TextStyle(
+                              fontSize: 22,
+                              fontWeight: FontWeight.w800,
+                              letterSpacing: -0.6,
+                              color: AppTheme.textColor(sheetContext),
+                            ),
                           ),
                           const Gap(4),
-                          Padding(
-                            padding: const EdgeInsets.only(left: 14),
-                            child: Text(
-                              subtitle,
-                              style: TextStyle(
-                                fontSize: 14,
-                                fontWeight: FontWeight.w500,
-                                height: 1.35,
-                                color: AppTheme.textLightColor(sheetContext),
-                              ),
+                          Text(
+                            subtitle,
+                            style: TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w500,
+                              height: 1.35,
+                              color: AppTheme.textLightColor(sheetContext),
                             ),
                           ),
                         ],
@@ -1432,6 +1430,9 @@ class _PremiumSheetItem extends StatelessWidget {
     required this.iconCodePoint,
     required this.selected,
     required this.onTap,
+    this.balance,
+    this.isPrivate = false,
+    this.currencySymbol,
   });
 
   final String name;
@@ -1439,6 +1440,9 @@ class _PremiumSheetItem extends StatelessWidget {
   final int iconCodePoint;
   final bool selected;
   final VoidCallback onTap;
+  final double? balance;
+  final bool isPrivate;
+  final String? currencySymbol;
 
   @override
   Widget build(BuildContext context) {
@@ -1492,14 +1496,37 @@ class _PremiumSheetItem extends StatelessWidget {
               ),
               const Gap(14),
               Expanded(
-                child: Text(
-                  name,
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w600,
-                    letterSpacing: -0.2,
-                    color: AppTheme.textColor(context),
-                  ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      name,
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                        letterSpacing: -0.2,
+                        color: AppTheme.textColor(context),
+                      ),
+                    ),
+                    if (balance != null) ...[
+                      const Gap(2),
+                      Text(
+                        isPrivate
+                            ? '••••'
+                            : NumberFormat.currency(
+                                symbol: currencySymbol ?? '',
+                              ).format(balance),
+                        style: TextStyle(
+                          fontSize: 13,
+                          fontWeight: isPrivate
+                              ? FontWeight.w800
+                              : FontWeight.w500,
+                          letterSpacing: isPrivate ? 2 : 0,
+                          color: AppTheme.textLightColor(context),
+                        ),
+                      ),
+                    ],
+                  ],
                 ),
               ),
               if (selected)
