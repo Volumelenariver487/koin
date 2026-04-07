@@ -19,8 +19,8 @@ import 'package:koin/core/providers/planned_payment_provider.dart';
 import 'package:koin/core/models/planned_payment.dart';
 import 'package:koin/features/planned_payments/add_edit_planned_payment_screen.dart';
 import 'package:koin/features/transactions/add_transaction_screen.dart';
-import 'package:koin/core/widgets/account_sheet.dart';
 import 'package:koin/core/utils/haptic_utils.dart';
+import 'package:koin/features/accounts/screens/account_form_screen.dart';
 import 'package:koin/core/widgets/pressable_scale.dart';
 import 'package:koin/core/widgets/animated_counter.dart';
 import 'package:koin/core/widgets/spending_trend_chart.dart';
@@ -306,30 +306,16 @@ class DashboardScreen extends ConsumerWidget {
             ],
           ),
         ),
-        GestureDetector(
-          onTap: () {
+        IconButton(
+          onPressed: () {
             HapticService.light();
             Navigator.push(context, SlideUpRoute(page: const SettingsScreen()));
           },
-          child: Container(
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: AppTheme.surfaceColor(context),
-              shape: BoxShape.circle,
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.04),
-                  blurRadius: 10,
-                  offset: const Offset(0, 4),
-                ),
-              ],
-            ),
-            child: Icon(
-              Icons.settings_outlined,
-              color: AppTheme.textColor(context),
-              size: 22,
-            ),
+          icon: Icon(
+            Icons.settings_outlined,
+            color: AppTheme.textColor(context),
           ),
+          tooltip: 'Settings',
         ),
       ],
     );
@@ -630,12 +616,15 @@ class DashboardScreen extends ConsumerWidget {
           title: 'Accounts',
           buttonLabel: 'Add',
           onTap: () {
-            AccountSheet.show(context, ref);
+            Navigator.push(
+              context,
+              SlideUpRoute(page: const AccountFormScreen()),
+            );
           },
         ),
         const Gap(4),
         SizedBox(
-          height: 90,
+          height: 110,
           child: ListView.separated(
             scrollDirection: Axis.horizontal,
             clipBehavior: Clip.none,
@@ -664,76 +653,144 @@ class DashboardScreen extends ConsumerWidget {
     double balance,
     Currency currency,
   ) {
+    final hasCustomBg = account.cardColor != null;
+    final hasLogo = account.logoAsset != null;
+    final isColored = hasCustomBg || hasLogo;
+
+    // Resolve card background
+    Color cardBg;
+    if (hasCustomBg) {
+      cardBg = account.cardColor!.withValues(alpha: 0.95);
+    } else if (hasLogo) {
+      cardBg = account.color.withValues(alpha: 0.9);
+    } else {
+      cardBg = AppTheme.surfaceColor(context);
+    }
+
+    // Resolve shadow color
+    final shadowColor = isColored
+        ? (hasCustomBg ? account.cardColor! : account.color).withValues(
+            alpha: 0.25,
+          )
+        : Colors.black.withValues(alpha: 0.04);
+
     return Container(
-      width: 150,
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+      width: 170,
+      clipBehavior: Clip.antiAlias,
       decoration: BoxDecoration(
-        color: AppTheme.surfaceColor(context),
+        color: cardBg,
         borderRadius: BorderRadius.circular(20),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.02),
-            blurRadius: 8,
-            offset: const Offset(0, 4),
+            color: shadowColor,
+            blurRadius: 16,
+            offset: const Offset(0, 6),
           ),
         ],
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisAlignment: MainAxisAlignment.center,
+      child: Stack(
         children: [
-          Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(6),
+          // ── Decorative gradient overlay for colored cards ──
+          if (isColored)
+            Positioned.fill(
+              child: DecoratedBox(
                 decoration: BoxDecoration(
-                  color: account.color.withValues(alpha: 0.1),
-                  shape: BoxShape.circle,
-                ),
-                child: Icon(
-                  IconUtils.getIcon(account.iconCodePoint),
-                  color: account.color,
-                  size: 14,
-                ),
-              ),
-              const Gap(8),
-              Expanded(
-                child: Text(
-                  account.name,
-                  style: TextStyle(
-                    fontWeight: FontWeight.w600,
-                    fontSize: 13,
-                    color: AppTheme.textLightColor(context),
+                  gradient: LinearGradient(
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                    colors: [
+                      Colors.white.withValues(alpha: 0.12),
+                      Colors.transparent,
+                      Colors.black.withValues(alpha: 0.08),
+                    ],
+                    stops: const [0.0, 0.5, 1.0],
                   ),
-                  overflow: TextOverflow.ellipsis,
                 ),
               ),
-            ],
-          ),
-          const Spacer(),
-          if (account.excludeFromTotal)
-            Text(
-              '••••',
-              style: TextStyle(
-                color: AppTheme.textColor(context).withValues(alpha: 0.6),
-                fontWeight: FontWeight.w800,
-                fontSize: 18,
-                letterSpacing: 2,
-              ),
-            )
-          else
-            AnimatedCounter(
-              value: balance,
-              formatter: (v) =>
-                  NumberFormat.currency(symbol: currency.symbol).format(v),
-              style: const TextStyle(
-                fontWeight: FontWeight.w800,
-                fontSize: 17,
-                letterSpacing: -0.5,
-              ),
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
             ),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Row(
+                  children: [
+                    Container(
+                      width: 40,
+                      height: 40,
+                      decoration: BoxDecoration(
+                        color: hasLogo
+                            ? Colors.white
+                            : account.color.withValues(alpha: 0.10),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: hasLogo
+                          ? ClipRRect(
+                              borderRadius: BorderRadius.circular(10),
+                              child: Image.asset(
+                                account.logoAsset!,
+                                fit: BoxFit.cover,
+                              ),
+                            )
+                          : Center(
+                              child: Icon(
+                                IconUtils.getIcon(account.iconCodePoint),
+                                color: account.color,
+                                size: 20,
+                              ),
+                            ),
+                    ),
+                    const Gap(12),
+                    Expanded(
+                      child: Text(
+                        account.name,
+                        style: TextStyle(
+                          fontWeight: FontWeight.w700,
+                          fontSize: 13,
+                          color: isColored
+                              ? Colors.white.withValues(alpha: 0.95)
+                              : AppTheme.textColor(context),
+                          letterSpacing: -0.1,
+                        ),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  ],
+                ),
+                const Spacer(),
+                if (account.excludeFromTotal)
+                  Text(
+                    '••••',
+                    style: TextStyle(
+                      color: isColored
+                          ? Colors.white.withValues(alpha: 0.6)
+                          : AppTheme.textColor(context).withValues(alpha: 0.6),
+                      fontWeight: FontWeight.w800,
+                      fontSize: 18,
+                      letterSpacing: 2,
+                    ),
+                  )
+                else
+                  AnimatedCounter(
+                    value: balance,
+                    formatter: (v) => NumberFormat.currency(
+                      symbol: currency.symbol,
+                    ).format(v),
+                    style: TextStyle(
+                      fontWeight: FontWeight.w800,
+                      fontSize: 16,
+                      letterSpacing: -0.5,
+                      color: isColored
+                          ? Colors.white.withValues(alpha: 0.9)
+                          : AppTheme.textColor(context),
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+              ],
+            ),
+          ),
         ],
       ),
     );
@@ -743,7 +800,7 @@ class DashboardScreen extends ConsumerWidget {
     return GestureDetector(
       onTap: () {
         HapticService.medium();
-        AccountSheet.show(context, ref);
+        Navigator.push(context, SlideUpRoute(page: const AccountFormScreen()));
       },
       child: Container(
         width: 100,

@@ -297,20 +297,40 @@ class AppTheme {
   // Predefined colors for variety
   static const List<Color> accentColors = [
     Color(0xFF00D09E), // Original Teal
-    Color(0xFF6366F1), // Indigo
     Color(0xFF3B82F6), // Blue
-    Color(0xFFEC4899), // Pink
-    Color(0xFFF59E0B), // Amber
+    Color(0xFF6366F1), // Indigo
     Color(0xFF8B5CF6), // Purple
-    Color(0xFFEF4444), // Red
-    Color(0xFF06B6D4), // Cyan
-    Color(0xFF10B981), // Emerald
+    Color(0xFFEC4899), // Pink
     Color(0xFFF43F5E), // Rose
-    Color(0xFF7C3AED), // Violet
-    Color(0xFFFB923C), // Orange
-    Color(0xFF0EA5E9), // Sky
+    Color(0xFFEF4444), // Red
+    Color(0xFFF59E0B), // Amber
+    Color(0xFFEAB308), // Yellow
     Color(0xFF84CC16), // Lime
+    Color(0xFF10B981), // Emerald
+    Color(0xFF06B6D4), // Cyan
+    Color(0xFF0EA5E9), // Sky
     Color(0xFFD946EF), // Fuchsia
-    Color(0xFF475569), // Slate
+    Color(0xFF64748B), // Slate
+    Color(0xFF171717), // Black
+  ];
+
+  // Premium, rich background colors for beautiful card designs
+  static const List<Color> cardColors = [
+    Color(0xFF1A1D1E), // Obsidian Black
+    Color(0xFF0F172A), // Deep Navy
+    Color(0xFF1E293B), // Navy Slate
+    Color(0xFF1E3A8A), // Royal Blue
+    Color(0xFF312E81), // Deep Indigo
+    Color(0xFF4C1D95), // Rich Purple
+    Color(0xFF701A75), // Dark Plum
+    Color(0xFF831843), // Deep Rose
+    Color(0xFF7F1D1D), // Crimson
+    Color(0xFF451A03), // Mahogany
+    Color(0xFF78350F), // Bronze
+    Color(0xFF14532D), // Forest Green
+    Color(0xFF064E3B), // Deep Emerald
+    Color(0xFF134E4A), // Dark Teal
+    Color(0xFF164E63), // Ocean Cyan
+    Color(0xFF334155), // Slate Gray
   ];
 }

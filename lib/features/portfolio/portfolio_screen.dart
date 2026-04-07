@@ -10,7 +10,7 @@ import 'package:koin/core/providers/account_provider.dart';
 import 'package:koin/core/providers/dashboard_provider.dart';
 import 'package:koin/core/widgets/confirmation_sheet.dart';
 import 'package:koin/core/utils/haptic_utils.dart';
-import 'package:koin/core/widgets/account_sheet.dart';
+import 'package:koin/features/accounts/screens/account_form_screen.dart';
 import 'package:koin/core/widgets/account_item.dart';
 import 'package:koin/core/providers/savings_provider.dart';
 import 'package:koin/core/providers/settings_provider.dart';
@@ -321,7 +321,10 @@ class _PortfolioScreenState extends ConsumerState<PortfolioScreen>
             buttonLabel: 'Add Your First Account',
             onTap: () {
               HapticService.medium();
-              AccountSheet.show(context, ref);
+              Navigator.push(
+                context,
+                SlideUpRoute(page: const AccountFormScreen()),
+              );
             },
           );
         }
@@ -369,7 +372,10 @@ class _PortfolioScreenState extends ConsumerState<PortfolioScreen>
               currencySymbol: currency.symbol,
               onTap: () {
                 HapticService.light();
-                AccountSheet.show(context, ref, account: account);
+                Navigator.push(
+                  context,
+                  SlideUpRoute(page: AccountFormScreen(account: account)),
+                );
               },
               onPrivateToggle: () {
                 final updatedAccount = account.copyWith(
@@ -468,7 +474,7 @@ class _PortfolioScreenState extends ConsumerState<PortfolioScreen>
     final button = PressableScale(
       onTap: () {
         HapticService.medium();
-        AccountSheet.show(context, ref);
+        Navigator.push(context, SlideUpRoute(page: const AccountFormScreen()));
       },
       child: Container(
         margin: const EdgeInsets.only(bottom: 24),

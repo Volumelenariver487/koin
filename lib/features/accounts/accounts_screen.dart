@@ -8,7 +8,8 @@ import 'package:koin/core/providers/dashboard_provider.dart';
 import 'package:koin/core/providers/settings_provider.dart';
 import 'package:koin/core/theme.dart';
 import 'package:koin/core/widgets/confirmation_sheet.dart';
-import 'package:koin/core/widgets/account_sheet.dart';
+import 'package:koin/core/utils/slide_up_route.dart';
+import 'package:koin/features/accounts/screens/account_form_screen.dart';
 import 'package:koin/core/utils/haptic_utils.dart';
 import 'package:koin/core/widgets/pressable_scale.dart';
 import 'package:koin/core/widgets/animated_counter.dart';
@@ -148,7 +149,12 @@ class _AccountsScreenState extends ConsumerState<AccountsScreen> {
                                       child: ElevatedButton.icon(
                                         onPressed: () {
                                           HapticService.medium();
-                                          AccountSheet.show(context, ref);
+                                          Navigator.push(
+                                            context,
+                                            SlideUpRoute(
+                                              page: const AccountFormScreen(),
+                                            ),
+                                          );
                                         },
                                         icon: const Icon(
                                           Icons.add_rounded,
@@ -232,7 +238,10 @@ class _AccountsScreenState extends ConsumerState<AccountsScreen> {
                     currencySymbol: currency.symbol,
                     onTap: () {
                       HapticService.light();
-                      AccountSheet.show(context, ref, account: account);
+                      Navigator.push(
+                        context,
+                        SlideUpRoute(page: AccountFormScreen(account: account)),
+                      );
                     },
                     onPrivateToggle: () {
                       final updatedAccount = account.copyWith(
@@ -384,7 +393,7 @@ class _AccountsScreenState extends ConsumerState<AccountsScreen> {
     final button = PressableScale(
       onTap: () {
         HapticService.medium();
-        AccountSheet.show(context, ref);
+        Navigator.push(context, SlideUpRoute(page: const AccountFormScreen()));
       },
       child: Container(
         margin: const EdgeInsets.only(bottom: 24),

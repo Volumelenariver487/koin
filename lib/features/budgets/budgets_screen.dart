@@ -404,16 +404,19 @@ class BudgetsScreen extends ConsumerWidget {
             ),
           ),
           IconButton(
-            icon: const Icon(Icons.category_outlined),
-            tooltip: 'Manage Categories',
-            onPressed: () {
-              HapticService.light();
-              Navigator.push(
-                context,
-                SlideUpRoute(page: const CategoryManagerScreen()),
-              );
-            },
-          ),
+                icon: const Icon(Icons.category_outlined),
+                tooltip: 'Manage Categories',
+                onPressed: () {
+                  HapticService.light();
+                  Navigator.push(
+                    context,
+                    SlideUpRoute(page: const CategoryManagerScreen()),
+                  );
+                },
+              )
+              .animate()
+              .fade(duration: 400.ms, delay: 200.ms)
+              .scale(begin: const Offset(0.8, 0.8)),
         ],
       ),
     );
