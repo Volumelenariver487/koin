@@ -133,6 +133,17 @@ class _DebtDetailsScreenState extends ConsumerState<DebtDetailsScreen> {
                           fontWeight: FontWeight.w800,
                         ),
                       ),
+                      if (debt.totalInstallments > 0) ...[
+                        const Gap(4),
+                        Text(
+                          '${debt.totalInstallments} total installments',
+                          style: TextStyle(
+                            color: AppTheme.textLightColor(context),
+                            fontSize: 14,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ],
                       const Gap(24),
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,

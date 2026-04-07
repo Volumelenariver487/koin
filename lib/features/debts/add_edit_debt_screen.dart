@@ -23,6 +23,7 @@ class _AddEditDebtScreenState extends ConsumerState<AddEditDebtScreen>
   final _nameController = TextEditingController();
   final _amountController = TextEditingController();
   final _notesController = TextEditingController();
+  final _installmentsController = TextEditingController();
 
   late DebtType _selectedType;
   DateTime _startDate = DateTime.now();
@@ -38,6 +39,9 @@ class _AddEditDebtScreenState extends ConsumerState<AddEditDebtScreen>
       _notesController.text = d.description ?? '';
       _selectedType = d.type;
       _startDate = d.startDate;
+      _installmentsController.text = d.totalInstallments > 0
+          ? d.totalInstallments.toString()
+          : '';
     } else {
       _selectedType = DebtType.owedToMe;
     }
@@ -63,6 +67,7 @@ class _AddEditDebtScreenState extends ConsumerState<AddEditDebtScreen>
     _nameController.dispose();
     _amountController.dispose();
     _notesController.dispose();
+    _installmentsController.dispose();
     _tabController.dispose();
     super.dispose();
   }
@@ -79,7 +84,11 @@ class _AddEditDebtScreenState extends ConsumerState<AddEditDebtScreen>
     final id = isEdit ? widget.debt!.id : const Uuid().v4();
     final currentAmount = isEdit ? widget.debt!.currentAmount : 0.0;
 
+    final installmentsText = _installmentsController.text.trim();
     int installments = 0;
+    if (installmentsText.isNotEmpty) {
+      installments = int.tryParse(installmentsText) ?? 0;
+    }
 
     final debt = Debt(
       id: id,
@@ -172,8 +181,8 @@ class _AddEditDebtScreenState extends ConsumerState<AddEditDebtScreen>
               const Gap(24),
               _buildTextInput(
                 controller: _nameController,
-                label: 'Name',
-                hint: 'e.g., John Doe',
+                label: 'Person/Institution Name',
+                hint: 'e.g., John Doe or BestBuy',
                 icon: Icons.person_rounded,
                 validator: (val) {
                   if (val == null || val.trim().isEmpty) return 'Enter a name';
@@ -198,6 +207,22 @@ class _AddEditDebtScreenState extends ConsumerState<AddEditDebtScreen>
                 },
               ),
 
+              const Gap(24),
+              _buildTextInput(
+                controller: _installmentsController,
+                label: 'Total Installments (Optional)',
+                hint: 'e.g., 12 months',
+                icon: Icons.calendar_month_rounded,
+                keyboardType: TextInputType.number,
+                validator: (val) {
+                  if (val != null &&
+                      val.isNotEmpty &&
+                      int.tryParse(val) == null) {
+                    return 'Invalid number';
+                  }
+                  return null;
+                },
+              ),
               const Gap(24),
               _buildTextInput(
                 controller: _notesController,

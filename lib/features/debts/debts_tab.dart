@@ -324,6 +324,17 @@ class DebtCard extends StatelessWidget {
                             fontSize: 16,
                           ),
                         ),
+                        if (debt.totalInstallments > 0) ...[
+                          const Gap(4),
+                          Text(
+                            '${debt.totalInstallments} installments',
+                            style: TextStyle(
+                              color: AppTheme.textLightColor(context),
+                              fontSize: 12,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ],
                       ],
                     ),
                   ),
