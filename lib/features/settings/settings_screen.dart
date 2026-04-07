@@ -18,8 +18,6 @@ import 'package:intl/intl.dart';
 import 'package:koin/core/utils/snackbar_utils.dart';
 import 'package:koin/core/widgets/koin_back_button.dart';
 import 'package:koin/core/widgets/pressable_scale.dart';
-import 'package:koin/core/utils/slide_up_route.dart';
-import 'package:koin/features/planned_payments/planned_payments_screen.dart';
 
 class SettingsScreen extends ConsumerWidget {
   const SettingsScreen({super.key});
@@ -281,28 +279,6 @@ class SettingsScreen extends ConsumerWidget {
                     icon: Icons.payments_outlined,
                     onTap: () =>
                         _showCurrencyPicker(context, ref, settings.currency),
-                  ),
-                ],
-              ),
-              const Gap(28),
-
-              // ── Features ──
-              _buildSectionHeader(context, 'Features'),
-              const Gap(12),
-              _buildGroupedCard(
-                context,
-                children: [
-                  _buildSettingTile(
-                    context,
-                    title: 'Subscriptions',
-                    subtitle: 'Manage recurring planned payments',
-                    icon: Icons.event_repeat_rounded,
-                    onTap: () {
-                      Navigator.push(
-                        context,
-                        SlideUpRoute(page: const PlannedPaymentsScreen()),
-                      );
-                    },
                   ),
                 ],
               ),

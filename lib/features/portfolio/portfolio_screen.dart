@@ -5,10 +5,12 @@ import 'package:gap/gap.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:intl/intl.dart';
 import 'package:koin/core/models/savings_goal.dart';
+import 'package:koin/core/models/category.dart';
 import 'package:koin/core/providers/account_provider.dart';
 import 'package:koin/core/providers/dashboard_provider.dart';
 import 'package:koin/core/providers/savings_provider.dart';
 import 'package:koin/core/providers/settings_provider.dart';
+import 'package:koin/core/providers/category_provider.dart';
 import 'package:koin/core/theme.dart';
 import 'package:koin/core/utils/haptic_utils.dart';
 import 'package:koin/core/utils/icon_utils.dart';
@@ -19,8 +21,15 @@ import 'package:koin/core/widgets/confirmation_sheet.dart';
 import 'package:koin/core/widgets/pressable_scale.dart';
 import 'package:koin/features/savings/add_savings_goal_screen.dart';
 import 'package:koin/features/savings/savings_details_screen.dart';
-import 'package:koin/core/widgets/koin_segmented_control.dart';
+
 import 'package:koin/features/debts/debts_tab.dart';
+import 'package:koin/core/providers/planned_payment_provider.dart';
+import 'package:koin/features/planned_payments/add_edit_planned_payment_screen.dart';
+import 'package:koin/core/models/transaction.dart';
+import 'package:koin/core/models/planned_payment.dart';
+import 'package:uuid/uuid.dart';
+import 'package:koin/core/providers/transaction_provider.dart';
+import 'package:koin/core/widgets/payment_confirmation_sheet.dart';
 
 class PortfolioScreen extends ConsumerStatefulWidget {
   const PortfolioScreen({super.key});
@@ -33,9 +42,10 @@ class _PortfolioScreenState extends ConsumerState<PortfolioScreen>
     with SingleTickerProviderStateMixin {
   late TabController _tabController;
   bool _showEntranceAnimations = true;
+  final GlobalKey _headerKey = GlobalKey();
 
   // Add more tabs here in the future (e.g., 'Investments')
-  static const _tabs = ['Accounts', 'Goals', 'Debts'];
+  static const _tabs = ['Accounts', 'Goals', 'Debts', 'Planned'];
 
   @override
   void initState() {
@@ -57,8 +67,93 @@ class _PortfolioScreenState extends ConsumerState<PortfolioScreen>
     super.dispose();
   }
 
+  Future<void> _paySubscription(
+    BuildContext context,
+    PlannedPayment payment,
+  ) async {
+    final result = await PaymentConfirmationSheet.show(
+      context: context,
+      payment: payment,
+    );
+    if (result == null || !context.mounted) return;
+
+    final transaction = AppTransaction(
+      id: const Uuid().v4(),
+      note: '${payment.title} (Subscription)',
+      amount: result.amount,
+      type: payment.type,
+      date: DateTime.now(),
+      categoryId: result.categoryId,
+      accountId: result.accountId,
+    );
+
+    DateTime nextDate = payment.nextDate;
+    switch (payment.frequency) {
+      case PaymentFrequency.daily:
+        nextDate = nextDate.add(const Duration(days: 1));
+        break;
+      case PaymentFrequency.weekly:
+        nextDate = nextDate.add(const Duration(days: 7));
+        break;
+      case PaymentFrequency.biWeekly:
+        nextDate = nextDate.add(const Duration(days: 14));
+        break;
+      case PaymentFrequency.monthly:
+        nextDate = DateTime(nextDate.year, nextDate.month + 1, nextDate.day);
+        break;
+      case PaymentFrequency.quarterly:
+        nextDate = DateTime(nextDate.year, nextDate.month + 3, nextDate.day);
+        break;
+      case PaymentFrequency.yearly:
+        nextDate = DateTime(nextDate.year + 1, nextDate.month, nextDate.day);
+        break;
+    }
+
+    final updatedPayment = PlannedPayment(
+      id: payment.id,
+      title: payment.title,
+      amount: payment.amount,
+      type: payment.type,
+      categoryId: payment.categoryId,
+      accountId: payment.accountId,
+      startDate: payment.startDate,
+      endDate: payment.endDate,
+      nextDate: nextDate,
+      frequency: payment.frequency,
+      notes: payment.notes,
+      isAutoProcess: payment.isAutoProcess,
+    );
+
+    await ref.read(transactionProvider.notifier).addTransaction(transaction);
+    await ref
+        .read(plannedPaymentProvider.notifier)
+        .updatePlannedPayment(updatedPayment);
+
+    if (context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Payment recorded successfully')),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
+    // Recreate controller if length mismatch (e.g. during hot reload after adding tabs)
+    if (_tabController.length != _tabs.length) {
+      final oldIndex = _tabController.index;
+      _tabController.dispose();
+      _tabController = TabController(
+        length: _tabs.length,
+        vsync: this,
+        initialIndex: oldIndex.clamp(0, _tabs.length - 1),
+      );
+      _tabController.addListener(() {
+        if (_tabController.indexIsChanging) {
+          HapticService.selection();
+        }
+      });
+    }
+
     final stats = ref.watch(dashboardStatsProvider);
     final settings = ref.watch(settingsProvider);
     final currency = settings.currency;
@@ -68,10 +163,9 @@ class _PortfolioScreenState extends ConsumerState<PortfolioScreen>
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         // ═══════════════════════════════════════════
-        // FIXED HEADER: Balance + Segmented Tabs
+        // FIXED HEADER: Dropdown Title + Balance
         // ═══════════════════════════════════════════
         _buildHeader(context, stats, fmt),
-        _buildSegmentedTabs(context),
 
         // ═══════════════════════════════════════════
         // TAB CONTENT (each tab scrolls independently)
@@ -83,6 +177,7 @@ class _PortfolioScreenState extends ConsumerState<PortfolioScreen>
               _buildAccountsTab(context, currency),
               _buildSavingsTab(context),
               const DebtsTab(),
+              _buildPlannedTab(context),
             ],
           ),
         ),
@@ -91,7 +186,7 @@ class _PortfolioScreenState extends ConsumerState<PortfolioScreen>
   }
 
   // ═══════════════════════════════════════════════════════
-  // HEADER — Portfolio label + total balance
+  // HEADER — Dropdown Navigation Title + total balance
   // ═══════════════════════════════════════════════════════
   Widget _buildHeader(
     BuildContext context,
@@ -101,33 +196,57 @@ class _PortfolioScreenState extends ConsumerState<PortfolioScreen>
     return Padding(
       padding: EdgeInsets.only(
         top: MediaQuery.paddingOf(context).top + 16,
-        bottom: 4,
+        bottom: 16,
         left: 24,
         right: 24,
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            'PORTFOLIO',
-            style: TextStyle(
-              color: AppTheme.textLightColor(context).withValues(alpha: 0.7),
-              fontSize: 11,
-              fontWeight: FontWeight.w700,
-              letterSpacing: 1.2,
-            ),
-          ),
-          const Gap(4),
-          AnimatedCounter(
-            value: stats.currentBalance,
-            formatter: (v) => fmt.format(v),
-            duration: const Duration(milliseconds: 600),
-            curve: Curves.easeOutCubic,
-            style: TextStyle(
-              color: AppTheme.textColor(context),
-              fontSize: 34,
-              fontWeight: FontWeight.w800,
-              letterSpacing: -1.2,
+          GestureDetector(
+            onTap: () => _showNavigationDropdown(context),
+            behavior: HitTestBehavior.opaque,
+            child: Column(
+              key: _headerKey,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'PORTFOLIO',
+                  style: TextStyle(
+                    color: AppTheme.textLightColor(context),
+                    fontSize: 12,
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: 1.5,
+                  ),
+                ),
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [
+                    AnimatedBuilder(
+                      animation: _tabController,
+                      builder: (context, child) {
+                        return Text(
+                          _tabs[_tabController.index],
+                          style: TextStyle(
+                            color: AppTheme.textColor(context),
+                            fontSize: 32,
+                            fontWeight: FontWeight.w800,
+                            letterSpacing: -1.0,
+                            height: 1.2,
+                          ),
+                        );
+                      },
+                    ),
+                    const Gap(6),
+                    Icon(
+                      Icons.keyboard_arrow_down_rounded,
+                      size: 28,
+                      color: AppTheme.primaryColor(context),
+                    ),
+                  ],
+                ),
+              ],
             ),
           ),
         ],
@@ -136,19 +255,52 @@ class _PortfolioScreenState extends ConsumerState<PortfolioScreen>
   }
 
   // ═══════════════════════════════════════════════════════
-  // SEGMENTED TAB BAR — premium pill-shaped switcher
+  // NAVIGATION DROPDOWN
   // ═══════════════════════════════════════════════════════
-  Widget _buildSegmentedTabs(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 12, 20, 6),
-      child: KoinSegmentedControl.custom(
-        controller: _tabController,
-        segments: [
-          const KoinSegmentItem(label: 'Accounts'),
-          const KoinSegmentItem(label: 'Goals'),
-          const KoinSegmentItem(label: 'Debts'),
-        ],
-      ),
+  void _showNavigationDropdown(BuildContext context) {
+    HapticService.selection();
+    final renderBox =
+        _headerKey.currentContext?.findRenderObject() as RenderBox?;
+    if (renderBox == null) return;
+
+    final offset = renderBox.localToGlobal(Offset.zero);
+    final top = offset.dy + renderBox.size.height + 6;
+    final left = offset.dx;
+
+    showGeneralDialog(
+      context: context,
+      barrierDismissible: true,
+      barrierLabel: 'Dismiss',
+      barrierColor: Colors.black.withValues(alpha: 0.1),
+      transitionDuration: const Duration(milliseconds: 300),
+      transitionBuilder: (context, anim, secondaryAnim, child) {
+        return Stack(
+          clipBehavior: Clip.none,
+          children: [
+            Positioned(
+              left: left,
+              top: top,
+              child: FadeTransition(
+                opacity: anim,
+                child: AnimatedBuilder(
+                  animation: anim,
+                  builder: (context, child) {
+                    return Align(
+                      alignment: const Alignment(0, -1),
+                      heightFactor: Curves.easeOutCubic.transform(anim.value),
+                      child: child,
+                    );
+                  },
+                  child: child,
+                ),
+              ),
+            ),
+          ],
+        );
+      },
+      pageBuilder: (context, anim, secondaryAnim) {
+        return _DropdownMenu(controller: _tabController, tabs: _tabs);
+      },
     );
   }
 
@@ -449,6 +601,359 @@ class _PortfolioScreenState extends ConsumerState<PortfolioScreen>
           .slideY(begin: 0.1, duration: 400.ms, curve: Curves.easeOutCubic);
     }
     return button;
+  }
+
+  // ═══════════════════════════════════════════════════════
+  // PLANNED TAB
+  // ═══════════════════════════════════════════════════════
+  Widget _buildPlannedTab(BuildContext context) {
+    final paymentsAsync = ref.watch(plannedPaymentProvider);
+    final settings = ref.watch(settingsProvider);
+    final currency = settings.currency;
+    final categories = ref.watch(categoriesProvider).value ?? [];
+
+    return paymentsAsync.when(
+      data: (payments) {
+        if (payments.isEmpty) {
+          return _buildFullEmptyState(
+            context,
+            icon: Icons.event_repeat_rounded,
+            title: 'No subscriptions',
+            subtitle:
+                'Add recurring payments to track\nyour future obligations',
+            buttonLabel: 'Add Your First Subscription',
+            onTap: () {
+              HapticService.medium();
+              Navigator.push(
+                context,
+                SlideUpRoute(page: const AddEditPlannedPaymentScreen()),
+              );
+            },
+          );
+        }
+        return RefreshIndicator(
+          onRefresh: () {
+            HapticService.light();
+            return ref
+                .read(plannedPaymentProvider.notifier)
+                .loadPlannedPayments();
+          },
+          color: AppTheme.primaryColor(context),
+          backgroundColor: AppTheme.surfaceColor(context),
+          child: ListView.builder(
+            physics: const AlwaysScrollableScrollPhysics(),
+            padding: const EdgeInsets.fromLTRB(20, 12, 20, 100),
+            itemCount: payments.length + 1,
+            itemBuilder: (context, index) {
+              if (index == payments.length) {
+                return _buildAddPlannedButton(context);
+              }
+              final payment = payments[index];
+              final category = categories
+                  .cast<TransactionCategory?>()
+                  .firstWhere(
+                    (c) => c?.id == payment.categoryId,
+                    orElse: () =>
+                        categories.isNotEmpty ? categories.first : null,
+                  );
+              return _buildPlannedPaymentCard(
+                context,
+                payment,
+                category,
+                currency,
+                index,
+              );
+            },
+          ),
+        );
+      },
+      loading: () => const Center(child: CircularProgressIndicator()),
+      error: (err, stack) => Center(child: Text('Error: $err')),
+    );
+  }
+
+  Widget _buildPlannedPaymentCard(
+    BuildContext context,
+    PlannedPayment payment,
+    dynamic category,
+    dynamic currency,
+    int index,
+  ) {
+    final isExpense = payment.type == TransactionType.expense;
+    final amountColor = isExpense
+        ? AppTheme.expenseColor(context)
+        : AppTheme.incomeColor(context);
+
+    final categoryColor = category != null
+        ? Color(int.parse(category.colorHex.replaceFirst('#', '0xFF')))
+        : AppTheme.primaryColor(context);
+
+    return PressableScale(
+          onTap: () {
+            HapticService.light();
+            Navigator.push(
+              context,
+              SlideUpRoute(page: AddEditPlannedPaymentScreen(payment: payment)),
+            );
+          },
+          child: Container(
+            margin: const EdgeInsets.only(bottom: 16),
+            padding: const EdgeInsets.all(20),
+            decoration: BoxDecoration(
+              color: AppTheme.surfaceColor(context),
+              borderRadius: BorderRadius.circular(24),
+              border: Border.all(
+                color: AppTheme.textLightColor(context).withValues(alpha: 0.1),
+                width: 1,
+              ),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.03),
+                  blurRadius: 20,
+                  offset: const Offset(0, 8),
+                ),
+              ],
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: categoryColor.withValues(alpha: 0.15),
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                      child: Icon(
+                        category != null
+                            ? IconData(
+                                category.iconCodePoint,
+                                fontFamily: 'MaterialIcons',
+                              )
+                            : Icons.category_rounded,
+                        color: categoryColor,
+                        size: 24,
+                      ),
+                    ),
+                    const Gap(16),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            payment.title,
+                            style: const TextStyle(
+                              fontWeight: FontWeight.w700,
+                              fontSize: 17,
+                              letterSpacing: -0.3,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          const Gap(6),
+                          Row(
+                            children: [
+                              Icon(
+                                Icons.refresh_rounded,
+                                size: 14,
+                                color: AppTheme.textLightColor(context),
+                              ),
+                              const Gap(4),
+                              Text(
+                                payment.frequency.name.toUpperCase(),
+                                style: TextStyle(
+                                  color: AppTheme.textLightColor(context),
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w700,
+                                  letterSpacing: 0.5,
+                                ),
+                              ),
+                              if (payment.isAutoProcess) ...[
+                                const Gap(8),
+                                Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 6,
+                                    vertical: 2,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: AppTheme.primaryColor(
+                                      context,
+                                    ).withValues(alpha: 0.1),
+                                    borderRadius: BorderRadius.circular(6),
+                                  ),
+                                  child: Row(
+                                    children: [
+                                      Icon(
+                                        Icons.bolt_rounded,
+                                        size: 10,
+                                        color: AppTheme.primaryColor(context),
+                                      ),
+                                      const Gap(2),
+                                      Text(
+                                        'AUTO',
+                                        style: TextStyle(
+                                          color: AppTheme.primaryColor(context),
+                                          fontSize: 9,
+                                          fontWeight: FontWeight.w800,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ],
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
+                    Text(
+                      "${isExpense ? '-' : '+'}${NumberFormat.currency(symbol: currency.symbol).format(payment.amount)}",
+                      style: TextStyle(
+                        color: amountColor,
+                        fontWeight: FontWeight.w800,
+                        fontSize: 18,
+                        letterSpacing: -0.5,
+                      ),
+                    ),
+                  ],
+                ),
+                const Gap(20),
+                Container(
+                  height: 1,
+                  color: AppTheme.textLightColor(
+                    context,
+                  ).withValues(alpha: 0.1),
+                ),
+                const Gap(16),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(8),
+                          decoration: BoxDecoration(
+                            color: AppTheme.backgroundColor(context),
+                            shape: BoxShape.circle,
+                          ),
+                          child: Icon(
+                            Icons.calendar_today_rounded,
+                            size: 14,
+                            color: AppTheme.textLightColor(context),
+                          ),
+                        ),
+                        const Gap(12),
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Next Payment',
+                              style: TextStyle(
+                                color: AppTheme.textLightColor(context),
+                                fontSize: 11,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                            Text(
+                              DateFormat.yMMMd().format(payment.nextDate),
+                              style: const TextStyle(
+                                fontWeight: FontWeight.w700,
+                                fontSize: 13,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                    InkWell(
+                      onTap: () {
+                        HapticService.light();
+                        _paySubscription(context, payment);
+                      },
+                      borderRadius: BorderRadius.circular(12),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 10,
+                        ),
+                        decoration: BoxDecoration(
+                          color: AppTheme.primaryColor(context),
+                          borderRadius: BorderRadius.circular(12),
+                          boxShadow: [
+                            BoxShadow(
+                              color: AppTheme.primaryColor(
+                                context,
+                              ).withValues(alpha: 0.3),
+                              blurRadius: 8,
+                              offset: const Offset(0, 4),
+                            ),
+                          ],
+                        ),
+                        child: const Text(
+                          'Pay Now',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 13,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        )
+        .animate()
+        .fade(delay: (index * 50).ms)
+        .slideY(begin: 0.1, curve: Curves.easeOutCubic);
+  }
+
+  Widget _buildAddPlannedButton(BuildContext context) {
+    return PressableScale(
+      onTap: () {
+        HapticService.medium();
+        Navigator.push(
+          context,
+          SlideUpRoute(page: const AddEditPlannedPaymentScreen()),
+        );
+      },
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 24, top: 4),
+        padding: const EdgeInsets.symmetric(vertical: 20),
+        decoration: BoxDecoration(
+          color: Colors.transparent,
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(
+            color: AppTheme.dividerColor(context).withValues(alpha: 0.5),
+            width: 1,
+            strokeAlign: BorderSide.strokeAlignInside,
+          ),
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              Icons.add_rounded,
+              color: AppTheme.textLightColor(context),
+              size: 20,
+            ),
+            const Gap(10),
+            Text(
+              'Add New Subscription',
+              style: TextStyle(
+                color: AppTheme.textLightColor(context),
+                fontWeight: FontWeight.w600,
+                fontSize: 14,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
   // ═══════════════════════════════════════════════════════
@@ -1153,5 +1658,95 @@ class _RadialProgressPainter extends CustomPainter {
     return oldDelegate.progress != progress ||
         oldDelegate.progressColor != progressColor ||
         oldDelegate.trackColor != trackColor;
+  }
+}
+
+class _DropdownMenu extends StatelessWidget {
+  final TabController controller;
+  final List<String> tabs;
+
+  const _DropdownMenu({required this.controller, required this.tabs});
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: Colors.transparent,
+      child: Container(
+        width: 180,
+        decoration: BoxDecoration(
+          color: AppTheme.surfaceColor(context),
+          borderRadius: BorderRadius.circular(24),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.12),
+              blurRadius: 36,
+              offset: const Offset(0, 12),
+            ),
+            BoxShadow(
+              color: AppTheme.primaryColor(context).withValues(alpha: 0.05),
+              blurRadius: 10,
+              spreadRadius: 1,
+            ),
+          ],
+          border: Border.all(
+            color: AppTheme.dividerColor(context).withValues(alpha: 0.4),
+            width: 1,
+            strokeAlign: BorderSide.strokeAlignOutside,
+          ),
+        ),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: List.generate(tabs.length, (index) {
+              final isSelected = controller.index == index;
+              return InkWell(
+                onTap: () {
+                  HapticService.selection();
+                  controller.animateTo(index);
+                  Navigator.pop(context);
+                },
+                child: Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 20,
+                    vertical: 16,
+                  ),
+                  decoration: BoxDecoration(
+                    color: isSelected
+                        ? AppTheme.primaryColor(context).withValues(alpha: 0.06)
+                        : Colors.transparent,
+                  ),
+                  child: Row(
+                    children: [
+                      Text(
+                        tabs[index],
+                        style: TextStyle(
+                          color: isSelected
+                              ? AppTheme.primaryColor(context)
+                              : AppTheme.textColor(context),
+                          fontSize: 15,
+                          fontWeight: isSelected
+                              ? FontWeight.w700
+                              : FontWeight.w600,
+                          letterSpacing: -0.3,
+                        ),
+                      ),
+                      const Spacer(),
+                      if (isSelected)
+                        Icon(
+                          Icons.check_rounded,
+                          color: AppTheme.primaryColor(context),
+                          size: 20,
+                        ),
+                    ],
+                  ),
+                ),
+              );
+            }),
+          ),
+        ),
+      ),
+    );
   }
 }

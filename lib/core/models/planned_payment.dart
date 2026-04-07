@@ -13,6 +13,7 @@ class PlannedPayment {
   final DateTime? endDate;
   final DateTime nextDate;
   final PaymentFrequency frequency;
+  final String? notes;
   final bool isAutoProcess;
 
   PlannedPayment({
@@ -26,6 +27,7 @@ class PlannedPayment {
     this.endDate,
     required this.nextDate,
     required this.frequency,
+    this.notes,
     this.isAutoProcess = false,
   });
 
@@ -41,6 +43,7 @@ class PlannedPayment {
       'endDate': endDate?.toIso8601String(),
       'nextDate': nextDate.toIso8601String(),
       'frequency': frequency.name,
+      'notes': notes,
       'isAutoProcess': isAutoProcess ? 1 : 0,
     };
   }
@@ -57,6 +60,7 @@ class PlannedPayment {
       endDate: map['endDate'] != null ? DateTime.parse(map['endDate']) : null,
       nextDate: DateTime.parse(map['nextDate']),
       frequency: PaymentFrequency.values.byName(map['frequency']),
+      notes: map['notes'],
       isAutoProcess: map['isAutoProcess'] == 1,
     );
   }

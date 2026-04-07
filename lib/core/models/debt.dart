@@ -1,3 +1,5 @@
+enum InstallmentFrequency { weekly, biweekly, monthly, yearly }
+
 enum DebtType { owedToMe, iOwe }
 
 class Debt {
@@ -9,6 +11,7 @@ class Debt {
   final DateTime startDate;
   final DateTime? dueDate;
   final int totalInstallments;
+  final InstallmentFrequency frequency;
   final String? accountId; // If initially funded/received from an account
   final double currentAmount; // Derived from repayments and initial amount
 
@@ -21,6 +24,7 @@ class Debt {
     required this.startDate,
     this.dueDate,
     this.totalInstallments = 0,
+    this.frequency = InstallmentFrequency.monthly,
     this.accountId,
     this.currentAmount = 0.0,
   });
@@ -35,6 +39,7 @@ class Debt {
       'startDate': startDate.toIso8601String(),
       'dueDate': dueDate?.toIso8601String(),
       'totalInstallments': totalInstallments,
+      'frequency': frequency.name,
       'accountId': accountId,
       'currentAmount': currentAmount,
     };
@@ -50,6 +55,9 @@ class Debt {
       startDate: DateTime.parse(map['startDate']),
       dueDate: map['dueDate'] != null ? DateTime.parse(map['dueDate']) : null,
       totalInstallments: map['totalInstallments'] ?? 0,
+      frequency: map['frequency'] != null
+          ? InstallmentFrequency.values.byName(map['frequency'])
+          : InstallmentFrequency.monthly,
       accountId: map['accountId'],
       currentAmount: map['currentAmount'] != null
           ? (map['currentAmount'] as num).toDouble()

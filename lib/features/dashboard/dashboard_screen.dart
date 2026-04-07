@@ -15,6 +15,9 @@ import 'package:koin/core/providers/settings_provider.dart';
 import 'package:koin/features/settings/settings_screen.dart';
 import 'package:koin/core/providers/navigation_provider.dart';
 import 'package:koin/core/providers/category_provider.dart';
+import 'package:koin/core/providers/planned_payment_provider.dart';
+import 'package:koin/core/models/planned_payment.dart';
+import 'package:koin/features/planned_payments/add_edit_planned_payment_screen.dart';
 import 'package:koin/features/transactions/add_transaction_screen.dart';
 import 'package:koin/core/widgets/account_sheet.dart';
 import 'package:koin/core/utils/haptic_utils.dart';
@@ -143,6 +146,23 @@ class DashboardScreen extends ConsumerWidget {
                     curve: Curves.easeOutCubic,
                   ),
               const Gap(28),
+              _buildBudgetSection(
+                context,
+                ref,
+                stats,
+                currency,
+              ).animate().fade(delay: 500.ms, duration: 500.ms),
+              const Gap(16),
+              _buildUpcomingPayments(context, ref, currency)
+                  .animate()
+                  .fade(delay: 550.ms, duration: 500.ms)
+                  .slideY(
+                    begin: 0.1,
+                    delay: 550.ms,
+                    duration: 500.ms,
+                    curve: Curves.easeOutCubic,
+                  ),
+              const Gap(32),
               _buildSectionHeader(
                 context,
                 ref,
@@ -1338,6 +1358,213 @@ class DashboardScreen extends ConsumerWidget {
         ),
       ),
       error: (e, st) => Center(child: Text('Error: $e')),
+    );
+  }
+
+  // ─── Upcoming Payments ───────────────────────────────────────────
+  Widget _buildUpcomingPayments(
+    BuildContext context,
+    WidgetRef ref,
+    Currency currency,
+  ) {
+    final paymentsAsync = ref.watch(plannedPaymentProvider);
+    final categories = ref.watch(categoriesProvider).value ?? [];
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _buildSectionHeader(
+          context,
+          ref,
+          title: 'Upcoming',
+          buttonLabel: 'Planned',
+          onTap: () {
+            HapticService.light();
+            ref.read(navigationProvider.notifier).setIndex(3);
+            ref
+                .read(pageControllerProvider)
+                .animateToPage(
+                  3,
+                  duration: const Duration(milliseconds: 300),
+                  curve: Curves.easeInOut,
+                );
+          },
+        ),
+        const Gap(16),
+        paymentsAsync.when(
+          data: (payments) {
+            if (payments.isEmpty) {
+              return _buildEmptyUpcoming(context, ref);
+            }
+
+            final sortedPayments = List<PlannedPayment>.from(payments)
+              ..sort((a, b) => a.nextDate.compareTo(b.nextDate));
+
+            final upcoming = sortedPayments.take(3).toList();
+
+            return Column(
+              children: upcoming.map((payment) {
+                final category =
+                    categories.any((c) => c.id == payment.categoryId)
+                    ? categories.firstWhere((c) => c.id == payment.categoryId)
+                    : (categories.isNotEmpty ? categories.first : null);
+                return _buildUpcomingPaymentItem(
+                  context,
+                  payment,
+                  category,
+                  currency,
+                );
+              }).toList(),
+            );
+          },
+          loading: () => const Center(child: CircularProgressIndicator()),
+          error: (err, _) => const SizedBox.shrink(),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildUpcomingPaymentItem(
+    BuildContext context,
+    PlannedPayment payment,
+    dynamic category,
+    Currency currency,
+  ) {
+    final isExpense = payment.type == TransactionType.expense;
+    final amountColor = isExpense
+        ? AppTheme.expenseColor(context)
+        : AppTheme.incomeColor(context);
+
+    final categoryColor = category != null
+        ? Color(int.parse(category.colorHex.replaceFirst('#', '0xFF')))
+        : AppTheme.primaryColor(context);
+
+    return PressableScale(
+      onTap: () {
+        HapticService.light();
+        Navigator.push(
+          context,
+          SlideUpRoute(page: AddEditPlannedPaymentScreen(payment: payment)),
+        );
+      },
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 12),
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: AppTheme.surfaceColor(context),
+          borderRadius: BorderRadius.circular(20),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.02),
+              blurRadius: 10,
+              offset: const Offset(0, 4),
+            ),
+          ],
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 44,
+              height: 44,
+              decoration: BoxDecoration(
+                color: categoryColor.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Icon(
+                category != null
+                    ? IconData(
+                        category.iconCodePoint,
+                        fontFamily: 'MaterialIcons',
+                      )
+                    : Icons.category_rounded,
+                color: categoryColor,
+                size: 20,
+              ),
+            ),
+            const Gap(14),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    payment.title,
+                    style: const TextStyle(
+                      fontWeight: FontWeight.w700,
+                      fontSize: 15,
+                    ),
+                  ),
+                  const Gap(4),
+                  Text(
+                    '${DateFormat.MMMMd().format(payment.nextDate)} • ${payment.frequency.name}',
+                    style: TextStyle(
+                      color: AppTheme.textLightColor(context),
+                      fontSize: 12,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Text(
+              "${isExpense ? '-' : '+'}${NumberFormat.currency(symbol: currency.symbol).format(payment.amount)}",
+              style: TextStyle(
+                color: amountColor,
+                fontWeight: FontWeight.w800,
+                fontSize: 15,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildEmptyUpcoming(BuildContext context, WidgetRef ref) {
+    return PressableScale(
+      onTap: () {
+        HapticService.medium();
+        Navigator.push(
+          context,
+          SlideUpRoute(page: const AddEditPlannedPaymentScreen()),
+        );
+      },
+      child: Container(
+        padding: const EdgeInsets.all(24),
+        width: double.infinity,
+        decoration: BoxDecoration(
+          color: AppTheme.surfaceColor(context),
+          borderRadius: BorderRadius.circular(24),
+          border: Border.all(
+            color: AppTheme.dividerColor(context).withValues(alpha: 0.5),
+          ),
+        ),
+        child: Column(
+          children: [
+            Icon(
+              Icons.event_repeat_rounded,
+              size: 32,
+              color: AppTheme.textLightColor(context).withValues(alpha: 0.3),
+            ),
+            const Gap(12),
+            Text(
+              'No upcoming payments',
+              style: TextStyle(
+                color: AppTheme.textLightColor(context),
+                fontWeight: FontWeight.w600,
+                fontSize: 14,
+              ),
+            ),
+            const Gap(4),
+            Text(
+              'Tap to add your first subscription',
+              style: TextStyle(
+                color: AppTheme.textLightColor(context).withValues(alpha: 0.5),
+                fontSize: 12,
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }

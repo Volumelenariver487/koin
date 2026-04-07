@@ -29,7 +29,7 @@ class DatabaseHelper {
 
     return await openDatabase(
       path,
-      version: 15,
+      version: 17,
       onCreate: _createDB,
       onUpgrade: _onUpgrade,
     );
@@ -111,6 +111,14 @@ CREATE TABLE app_settings (
     if (oldVersion < 15) {
       await _createDebtsTables(db);
     }
+    if (oldVersion < 16) {
+      await db.execute('ALTER TABLE planned_payments ADD COLUMN notes TEXT');
+    }
+    if (oldVersion < 17) {
+      await db.execute(
+        'ALTER TABLE debts ADD COLUMN frequency TEXT DEFAULT "monthly"',
+      );
+    }
   }
 
   Future _createPlannedPaymentsTable(Database db) async {
@@ -130,6 +138,7 @@ CREATE TABLE planned_payments (
   endDate TEXT,
   nextDate $textType,
   frequency $textType,
+  notes TEXT,
   isAutoProcess INTEGER DEFAULT 0,
   FOREIGN KEY (categoryId) REFERENCES categories (id) ON DELETE SET NULL,
   FOREIGN KEY (accountId) REFERENCES accounts (id) ON DELETE SET NULL
@@ -153,6 +162,7 @@ CREATE TABLE debts (
   startDate $textType,
   dueDate TEXT,
   totalInstallments INTEGER DEFAULT 0,
+  frequency TEXT DEFAULT "monthly",
   accountId TEXT
 )
 ''');

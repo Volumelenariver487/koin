@@ -164,36 +164,32 @@ class DebtsTab extends ConsumerWidget {
           padding: const EdgeInsets.fromLTRB(20, 12, 20, 100),
           children: [
             if (owedToMe.isNotEmpty) ...[
-              Padding(
-                padding: const EdgeInsets.only(bottom: 12, left: 4),
-                child: Text(
-                  'Owed to you',
-                  style: TextStyle(
-                    color: AppTheme.textLightColor(context),
-                    fontSize: 13,
-                    fontWeight: FontWeight.w700,
-                    letterSpacing: 0.5,
-                  ),
-                ),
+              _buildSectionHeader(
+                context,
+                icon: Icons.arrow_downward_rounded,
+                label: 'OWED TO YOU',
+                color: AppTheme.incomeColor(context),
               ),
-              ...owedToMe.map((d) => DebtCard(debt: d, currencyFormat: fmt)),
-              const Gap(16),
+              const Gap(12),
+              ...owedToMe.asMap().entries.map(
+                (e) =>
+                    DebtCard(debt: e.value, currencyFormat: fmt, index: e.key),
+              ),
+              const Gap(20),
             ],
             if (iOwe.isNotEmpty) ...[
-              Padding(
-                padding: const EdgeInsets.only(bottom: 12, left: 4),
-                child: Text(
-                  'You owe',
-                  style: TextStyle(
-                    color: AppTheme.textLightColor(context),
-                    fontSize: 13,
-                    fontWeight: FontWeight.w700,
-                    letterSpacing: 0.5,
-                  ),
-                ),
+              _buildSectionHeader(
+                context,
+                icon: Icons.arrow_upward_rounded,
+                label: 'YOU OWE',
+                color: AppTheme.expenseColor(context),
               ),
-              ...iOwe.map((d) => DebtCard(debt: d, currencyFormat: fmt)),
-              const Gap(16),
+              const Gap(12),
+              ...iOwe.asMap().entries.map(
+                (e) =>
+                    DebtCard(debt: e.value, currencyFormat: fmt, index: e.key),
+              ),
+              const Gap(20),
             ],
             _buildAddDebtButton(context),
           ],
@@ -201,6 +197,39 @@ class DebtsTab extends ConsumerWidget {
       },
       loading: () => const Center(child: CircularProgressIndicator()),
       error: (e, _) => Center(child: Text('Error: \$e')),
+    );
+  }
+
+  Widget _buildSectionHeader(
+    BuildContext context, {
+    required IconData icon,
+    required String label,
+    required Color color,
+  }) {
+    return Padding(
+      padding: const EdgeInsets.only(left: 4),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(4),
+            decoration: BoxDecoration(
+              color: color.withValues(alpha: 0.1),
+              borderRadius: BorderRadius.circular(6),
+            ),
+            child: Icon(icon, size: 12, color: color),
+          ),
+          const Gap(8),
+          Text(
+            label,
+            style: TextStyle(
+              color: AppTheme.textLightColor(context),
+              fontSize: 12,
+              fontWeight: FontWeight.w800,
+              letterSpacing: 1.2,
+            ),
+          ),
+        ],
+      ),
     );
   }
 
@@ -249,143 +278,229 @@ class DebtsTab extends ConsumerWidget {
 class DebtCard extends StatelessWidget {
   final Debt debt;
   final NumberFormat currencyFormat;
+  final int index;
 
-  const DebtCard({super.key, required this.debt, required this.currencyFormat});
+  const DebtCard({
+    super.key,
+    required this.debt,
+    required this.currencyFormat,
+    this.index = 0,
+  });
 
   @override
   Widget build(BuildContext context) {
     final progress = (debt.currentAmount / debt.amount).clamp(0.0, 1.0);
     final isSettled = progress >= 1.0;
+    final remaining = (debt.amount - debt.currentAmount).clamp(
+      0.0,
+      debt.amount,
+    );
     final color = debt.type == DebtType.owedToMe
         ? AppTheme.incomeColor(context)
         : AppTheme.expenseColor(context);
-    final bgIcon = debt.type == DebtType.owedToMe
-        ? Icons.arrow_downward_rounded
-        : Icons.arrow_upward_rounded;
+    final percentText = '${(progress * 100).toInt()}%';
 
     return Padding(
-      padding: const EdgeInsets.only(bottom: 12),
-      child: PressableScale(
-        onTap: () {
-          HapticService.light();
-          Navigator.push(
-            context,
-            SlideUpRoute(page: DebtDetailsScreen(debtId: debt.id)),
-          );
-        },
-        child: Container(
-          padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            color: AppTheme.surfaceColor(context),
-            borderRadius: BorderRadius.circular(20),
-            border: Border.all(
-              color: AppTheme.dividerColor(context).withValues(alpha: 0.3),
-              width: 1,
-            ),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withValues(alpha: 0.02),
-                blurRadius: 10,
-                offset: const Offset(0, 4),
-              ),
-            ],
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  Container(
-                    width: 44,
-                    height: 44,
-                    decoration: BoxDecoration(
-                      color: isSettled
-                          ? AppTheme.primaryColor(
-                              context,
-                            ).withValues(alpha: 0.1)
-                          : color.withValues(alpha: 0.1),
-                      borderRadius: BorderRadius.circular(14),
-                    ),
-                    child: Icon(
-                      isSettled ? Icons.check_circle_rounded : bgIcon,
-                      color: isSettled ? AppTheme.primaryColor(context) : color,
-                    ),
-                  ),
-                  const Gap(16),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          debt.personName,
-                          style: TextStyle(
-                            color: AppTheme.textColor(context),
-                            fontWeight: FontWeight.w700,
-                            fontSize: 16,
-                          ),
-                        ),
-                        if (debt.totalInstallments > 0) ...[
-                          const Gap(4),
-                          Text(
-                            '${debt.totalInstallments} installments',
-                            style: TextStyle(
-                              color: AppTheme.textLightColor(context),
-                              fontSize: 12,
-                              fontWeight: FontWeight.w500,
-                            ),
-                          ),
-                        ],
-                      ],
-                    ),
-                  ),
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.end,
-                    children: [
-                      Text(
-                        currencyFormat.format(debt.amount),
-                        style: TextStyle(
-                          color: AppTheme.textColor(context),
-                          fontWeight: FontWeight.w800,
-                          fontSize: 16,
-                        ),
-                      ),
-                      const Gap(4),
-                      Text(
-                        isSettled
-                            ? 'Settled'
-                            : '${currencyFormat.format(debt.currentAmount)} paid',
-                        style: TextStyle(
-                          color: isSettled
-                              ? AppTheme.primaryColor(context)
-                              : AppTheme.textLightColor(context),
-                          fontSize: 12,
-                          fontWeight: isSettled
-                              ? FontWeight.w700
-                              : FontWeight.w500,
-                        ),
-                      ),
-                    ],
+          padding: const EdgeInsets.only(bottom: 12),
+          child: PressableScale(
+            onTap: () {
+              HapticService.light();
+              Navigator.push(
+                context,
+                SlideUpRoute(page: DebtDetailsScreen(debtId: debt.id)),
+              );
+            },
+            child: Container(
+              padding: const EdgeInsets.all(18),
+              decoration: BoxDecoration(
+                color: AppTheme.surfaceColor(context),
+                borderRadius: BorderRadius.circular(22),
+                border: Border.all(
+                  color: AppTheme.dividerColor(context).withValues(alpha: 0.3),
+                  width: 1,
+                ),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.03),
+                    blurRadius: 16,
+                    offset: const Offset(0, 6),
                   ),
                 ],
               ),
-              if (!isSettled && debt.amount > 0) ...[
-                const Gap(16),
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(4),
-                  child: LinearProgressIndicator(
-                    value: progress,
-                    backgroundColor: AppTheme.dividerColor(context),
-                    valueColor: AlwaysStoppedAnimation<Color>(
-                      debt.type == DebtType.owedToMe ? color : color,
-                    ),
-                    minHeight: 6,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Top row: avatar + name + amount
+                  Row(
+                    children: [
+                      // Person initial avatar
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                Flexible(
+                                  child: Text(
+                                    debt.personName,
+                                    style: TextStyle(
+                                      color: AppTheme.textColor(context),
+                                      fontWeight: FontWeight.w700,
+                                      fontSize: 16,
+                                      letterSpacing: -0.3,
+                                    ),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ),
+                                if (isSettled) ...[
+                                  const Gap(8),
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 8,
+                                      vertical: 3,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: AppTheme.primaryColor(
+                                        context,
+                                      ).withValues(alpha: 0.1),
+                                      borderRadius: BorderRadius.circular(8),
+                                    ),
+                                    child: Text(
+                                      'SETTLED',
+                                      style: TextStyle(
+                                        color: AppTheme.primaryColor(context),
+                                        fontSize: 9,
+                                        fontWeight: FontWeight.w800,
+                                        letterSpacing: 0.5,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ],
+                            ),
+                            const Gap(4),
+                            Row(
+                              children: [
+                                if (debt.totalInstallments > 0) ...[
+                                  Text(
+                                    '${debt.totalInstallments} ${debt.frequency.name} payments',
+                                    style: TextStyle(
+                                      color: AppTheme.textLightColor(context),
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w500,
+                                    ),
+                                  ),
+                                ] else
+                                  Text(
+                                    isSettled
+                                        ? 'Fully paid'
+                                        : 'No installments',
+                                    style: TextStyle(
+                                      color: AppTheme.textLightColor(context),
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w500,
+                                    ),
+                                  ),
+                              ],
+                            ),
+                          ],
+                        ),
+                      ),
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.end,
+                        children: [
+                          Text(
+                            currencyFormat.format(debt.amount),
+                            style: TextStyle(
+                              color: AppTheme.textColor(context),
+                              fontWeight: FontWeight.w800,
+                              fontSize: 17,
+                              letterSpacing: -0.5,
+                            ),
+                          ),
+                          const Gap(4),
+                          Text(
+                            isSettled
+                                ? 'Completed'
+                                : '${currencyFormat.format(remaining)} left',
+                            style: TextStyle(
+                              color: isSettled
+                                  ? AppTheme.primaryColor(context)
+                                  : AppTheme.textLightColor(context),
+                              fontSize: 12,
+                              fontWeight: isSettled
+                                  ? FontWeight.w700
+                                  : FontWeight.w500,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
                   ),
-                ),
-              ],
-            ],
+                  // Progress bar
+                  if (!isSettled && debt.amount > 0) ...[
+                    const Gap(16),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: ClipRRect(
+                            borderRadius: BorderRadius.circular(6),
+                            child: Stack(
+                              children: [
+                                Container(
+                                  height: 8,
+                                  decoration: BoxDecoration(
+                                    color: AppTheme.dividerColor(context),
+                                    borderRadius: BorderRadius.circular(6),
+                                  ),
+                                ),
+                                FractionallySizedBox(
+                                  widthFactor: progress,
+                                  child: Container(
+                                    height: 8,
+                                    decoration: BoxDecoration(
+                                      gradient: LinearGradient(
+                                        colors: [
+                                          color,
+                                          color.withValues(alpha: 0.7),
+                                        ],
+                                      ),
+                                      borderRadius: BorderRadius.circular(6),
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                        const Gap(10),
+                        Text(
+                          percentText,
+                          style: TextStyle(
+                            color: color,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ],
+              ),
+            ),
           ),
-        ),
-      ),
-    );
+        )
+        .animate()
+        .slideY(
+          begin: 0.15,
+          delay: Duration(milliseconds: 80 * index),
+          duration: 350.ms,
+          curve: Curves.easeOutCubic,
+        )
+        .fadeIn(
+          delay: Duration(milliseconds: 80 * index),
+          duration: 350.ms,
+        );
   }
 }

@@ -9,9 +9,83 @@ import 'package:koin/features/planned_payments/add_edit_planned_payment_screen.d
 import 'package:koin/core/widgets/pressable_scale.dart';
 import 'package:koin/core/utils/haptic_utils.dart';
 import 'package:intl/intl.dart';
+import 'package:uuid/uuid.dart';
+import 'package:koin/core/providers/transaction_provider.dart';
+import 'package:koin/core/models/planned_payment.dart';
+import 'package:koin/core/widgets/payment_confirmation_sheet.dart';
 
 class PlannedPaymentsScreen extends ConsumerWidget {
   const PlannedPaymentsScreen({super.key});
+
+  Future<void> _paySubscription(
+    BuildContext context,
+    WidgetRef ref,
+    PlannedPayment payment,
+  ) async {
+    final result = await PaymentConfirmationSheet.show(
+      context: context,
+      payment: payment,
+    );
+    if (result == null || !context.mounted) return;
+
+    final transaction = AppTransaction(
+      id: const Uuid().v4(),
+      note: '${payment.title} (Subscription)',
+      amount: result.amount,
+      type: payment.type,
+      date: DateTime.now(),
+      categoryId: result.categoryId,
+      accountId: result.accountId,
+    );
+
+    DateTime nextDate = payment.nextDate;
+    switch (payment.frequency) {
+      case PaymentFrequency.daily:
+        nextDate = nextDate.add(const Duration(days: 1));
+        break;
+      case PaymentFrequency.weekly:
+        nextDate = nextDate.add(const Duration(days: 7));
+        break;
+      case PaymentFrequency.biWeekly:
+        nextDate = nextDate.add(const Duration(days: 14));
+        break;
+      case PaymentFrequency.monthly:
+        nextDate = DateTime(nextDate.year, nextDate.month + 1, nextDate.day);
+        break;
+      case PaymentFrequency.quarterly:
+        nextDate = DateTime(nextDate.year, nextDate.month + 3, nextDate.day);
+        break;
+      case PaymentFrequency.yearly:
+        nextDate = DateTime(nextDate.year + 1, nextDate.month, nextDate.day);
+        break;
+    }
+
+    final updatedPayment = PlannedPayment(
+      id: payment.id,
+      title: payment.title,
+      amount: payment.amount,
+      type: payment.type,
+      categoryId: payment.categoryId,
+      accountId: payment.accountId,
+      startDate: payment.startDate,
+      endDate: payment.endDate,
+      nextDate: nextDate,
+      frequency: payment.frequency,
+      notes: payment.notes,
+      isAutoProcess: payment.isAutoProcess,
+    );
+
+    await ref.read(transactionProvider.notifier).addTransaction(transaction);
+    await ref
+        .read(plannedPaymentProvider.notifier)
+        .updatePlannedPayment(updatedPayment);
+
+    if (context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Payment recorded successfully')),
+      );
+    }
+  }
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -50,8 +124,12 @@ class PlannedPaymentsScreen extends ConsumerWidget {
                   ? AppTheme.expenseColor(context)
                   : AppTheme.incomeColor(context);
 
+              final categoryColor = Color(
+                int.parse(category.colorHex.replaceFirst('#', '0xFF')),
+              );
+
               return Padding(
-                padding: const EdgeInsets.only(bottom: 12),
+                padding: const EdgeInsets.only(bottom: 16),
                 child: PressableScale(
                   onTap: () {
                     HapticService.light();
@@ -64,87 +142,219 @@ class PlannedPaymentsScreen extends ConsumerWidget {
                     );
                   },
                   child: Container(
-                    padding: const EdgeInsets.all(16),
+                    padding: const EdgeInsets.all(20),
                     decoration: BoxDecoration(
                       color: AppTheme.surfaceColor(context),
-                      borderRadius: BorderRadius.circular(20),
+                      borderRadius: BorderRadius.circular(24),
+                      border: Border.all(
+                        color: AppTheme.textLightColor(
+                          context,
+                        ).withValues(alpha: 0.1),
+                        width: 1,
+                      ),
                       boxShadow: [
                         BoxShadow(
-                          color: Colors.black.withValues(alpha: 0.02),
-                          blurRadius: 10,
-                          offset: const Offset(0, 4),
+                          color: Colors.black.withValues(alpha: 0.03),
+                          blurRadius: 20,
+                          offset: const Offset(0, 8),
                         ),
                       ],
                     ),
-                    child: Row(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Container(
-                          padding: const EdgeInsets.all(12),
-                          decoration: BoxDecoration(
-                            color: Color(
-                              int.parse(
-                                category.colorHex.replaceFirst('#', '0xFF'),
-                              ),
-                            ).withValues(alpha: 0.1),
-                            shape: BoxShape.circle,
-                          ),
-                          child: Icon(
-                            IconData(
-                              category.iconCodePoint,
-                              fontFamily: 'MaterialIcons',
-                            ),
-                            color: Color(
-                              int.parse(
-                                category.colorHex.replaceFirst('#', '0xFF'),
-                              ),
-                            ),
-                            size: 24,
-                          ),
-                        ),
-                        const SizedBox(width: 16),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                payment.title,
-                                style: const TextStyle(
-                                  fontWeight: FontWeight.w700,
-                                  fontSize: 16,
-                                ),
-                              ),
-                              const SizedBox(height: 4),
-                              Text(
-                                'Next: \${DateFormat.yMMMd().format(payment.nextDate)} • \${payment.frequency.name}',
-                                style: TextStyle(
-                                  color: AppTheme.textLightColor(context),
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.w500,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                        Column(
-                          crossAxisAlignment: CrossAxisAlignment.end,
+                        Row(
+                          crossAxisAlignment: CrossAxisAlignment.center,
                           children: [
+                            Container(
+                              padding: const EdgeInsets.all(12),
+                              decoration: BoxDecoration(
+                                color: categoryColor.withValues(alpha: 0.15),
+                                borderRadius: BorderRadius.circular(16),
+                              ),
+                              child: Icon(
+                                IconData(
+                                  category.iconCodePoint,
+                                  fontFamily: 'MaterialIcons',
+                                ),
+                                color: categoryColor,
+                                size: 24,
+                              ),
+                            ),
+                            const SizedBox(width: 16),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    payment.title,
+                                    style: const TextStyle(
+                                      fontWeight: FontWeight.w700,
+                                      fontSize: 17,
+                                      letterSpacing: -0.3,
+                                    ),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                  const SizedBox(height: 6),
+                                  Row(
+                                    children: [
+                                      Icon(
+                                        Icons.refresh_rounded,
+                                        size: 14,
+                                        color: AppTheme.textLightColor(context),
+                                      ),
+                                      const SizedBox(width: 4),
+                                      Text(
+                                        payment.frequency.name.toUpperCase(),
+                                        style: TextStyle(
+                                          color: AppTheme.textLightColor(
+                                            context,
+                                          ),
+                                          fontSize: 11,
+                                          fontWeight: FontWeight.w700,
+                                          letterSpacing: 0.5,
+                                        ),
+                                      ),
+                                      if (payment.isAutoProcess) ...[
+                                        const SizedBox(width: 8),
+                                        Container(
+                                          padding: const EdgeInsets.symmetric(
+                                            horizontal: 6,
+                                            vertical: 2,
+                                          ),
+                                          decoration: BoxDecoration(
+                                            color: AppTheme.primaryColor(
+                                              context,
+                                            ).withValues(alpha: 0.1),
+                                            borderRadius: BorderRadius.circular(
+                                              6,
+                                            ),
+                                          ),
+                                          child: Row(
+                                            children: [
+                                              Icon(
+                                                Icons.bolt_rounded,
+                                                size: 10,
+                                                color: AppTheme.primaryColor(
+                                                  context,
+                                                ),
+                                              ),
+                                              const SizedBox(width: 2),
+                                              Text(
+                                                'AUTO',
+                                                style: TextStyle(
+                                                  color: AppTheme.primaryColor(
+                                                    context,
+                                                  ),
+                                                  fontSize: 9,
+                                                  fontWeight: FontWeight.w800,
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                      ],
+                                    ],
+                                  ),
+                                ],
+                              ),
+                            ),
                             Text(
                               "${isExpense ? '-' : '+'}${NumberFormat.currency(symbol: currency.symbol).format(payment.amount)}",
                               style: TextStyle(
                                 color: amountColor,
                                 fontWeight: FontWeight.w800,
-                                fontSize: 16,
+                                fontSize: 18,
+                                letterSpacing: -0.5,
                               ),
                             ),
-                            if (payment.isAutoProcess)
-                              Padding(
-                                padding: const EdgeInsets.only(top: 4.0),
-                                child: Icon(
-                                  Icons.autorenew,
-                                  size: 14,
+                          ],
+                        ),
+                        const SizedBox(height: 20),
+                        Container(
+                          height: 1,
+                          color: AppTheme.textLightColor(
+                            context,
+                          ).withValues(alpha: 0.1),
+                        ),
+                        const SizedBox(height: 16),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Row(
+                              children: [
+                                Container(
+                                  padding: const EdgeInsets.all(8),
+                                  decoration: BoxDecoration(
+                                    color: AppTheme.backgroundColor(context),
+                                    shape: BoxShape.circle,
+                                  ),
+                                  child: Icon(
+                                    Icons.calendar_today_rounded,
+                                    size: 14,
+                                    color: AppTheme.textLightColor(context),
+                                  ),
+                                ),
+                                const SizedBox(width: 12),
+                                Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      'Next Payment',
+                                      style: TextStyle(
+                                        color: AppTheme.textLightColor(context),
+                                        fontSize: 11,
+                                        fontWeight: FontWeight.w500,
+                                      ),
+                                    ),
+                                    Text(
+                                      DateFormat.yMMMd().format(
+                                        payment.nextDate,
+                                      ),
+                                      style: const TextStyle(
+                                        fontWeight: FontWeight.w700,
+                                        fontSize: 13,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ],
+                            ),
+                            InkWell(
+                              onTap: () {
+                                HapticService.light();
+                                _paySubscription(context, ref, payment);
+                              },
+                              borderRadius: BorderRadius.circular(12),
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 16,
+                                  vertical: 10,
+                                ),
+                                decoration: BoxDecoration(
                                   color: AppTheme.primaryColor(context),
+                                  borderRadius: BorderRadius.circular(12),
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: AppTheme.primaryColor(
+                                        context,
+                                      ).withValues(alpha: 0.3),
+                                      blurRadius: 8,
+                                      offset: const Offset(0, 4),
+                                    ),
+                                  ],
+                                ),
+                                child: const Text(
+                                  'Pay Now',
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w700,
+                                  ),
                                 ),
                               ),
+                            ),
                           ],
                         ),
                       ],
