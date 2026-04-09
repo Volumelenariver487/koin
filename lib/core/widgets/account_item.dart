@@ -29,28 +29,162 @@ class AccountItem extends StatelessWidget {
   bool get _hasColoredBackground =>
       account.cardColor != null || account.logoAsset != null;
 
-  /// Resolves the card background:
-  ///  1. Explicit card color set by the user  →  use that
-  ///  2. Logo-based account                   →  use brand color w/ high opacity
-  ///  3. Default                              →  surface color
-  Color _cardBackground(BuildContext context) {
-    if (account.cardColor != null) {
-      return account.cardColor!.withValues(alpha: 0.9);
+  BoxDecoration _cardDecoration(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    if (_hasColoredBackground) {
+      final baseColor = account.cardColor ?? account.color;
+      return BoxDecoration(
+        borderRadius: BorderRadius.circular(24),
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            baseColor.withValues(alpha: 0.95),
+            baseColor.withValues(alpha: 0.8),
+          ],
+          stops: const [0.2, 1.0],
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: baseColor.withValues(alpha: 0.3),
+            blurRadius: 24,
+            offset: const Offset(0, 8),
+          ),
+          BoxShadow(
+            color: baseColor.withValues(alpha: 0.15),
+            blurRadius: 8,
+            offset: const Offset(0, 4),
+          ),
+        ],
+        border: Border.all(
+          color: Colors.white.withValues(alpha: 0.15),
+          width: 0.5,
+        ),
+      );
     }
-    if (account.logoAsset != null) {
-      return account.color.withValues(alpha: 0.9);
-    }
-    return AppTheme.surfaceColor(context);
+
+    final surfaceColor = AppTheme.surfaceColor(context);
+    return BoxDecoration(
+      color: surfaceColor,
+      borderRadius: BorderRadius.circular(24),
+      border: Border.all(
+        color: isDark
+            ? Colors.white.withValues(alpha: 0.08)
+            : AppTheme.dividerColor(context).withValues(alpha: 0.6),
+        width: 1.2,
+      ),
+      boxShadow: [
+        BoxShadow(
+          color: isDark
+              ? Colors.black.withValues(alpha: 0.3)
+              : Colors.black.withValues(alpha: 0.03),
+          blurRadius: 16,
+          offset: const Offset(0, 6),
+        ),
+      ],
+    );
   }
 
-  Color _shadowColor(BuildContext context) {
-    if (account.cardColor != null) {
-      return account.cardColor!.withValues(alpha: 0.20);
+  List<Widget> _buildBackgroundShapes(bool colored) {
+    if (!colored) return const [];
+
+    final hash = account.id.hashCode.abs();
+    final shapeType = hash % 4;
+
+    switch (shapeType) {
+      case 0:
+        return [
+          Positioned(
+            right: -24,
+            top: -24,
+            child: Container(
+              width: 130,
+              height: 130,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: Colors.white.withValues(alpha: 0.12),
+              ),
+            ),
+          ),
+        ];
+      case 1:
+        return [
+          Positioned(
+            right: -40,
+            bottom: -50,
+            child: Transform.rotate(
+              angle: 0.5,
+              child: Container(
+                width: 140,
+                height: 120,
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(30),
+                  color: Colors.white.withValues(alpha: 0.10),
+                ),
+              ),
+            ),
+          ),
+        ];
+      case 2:
+        return [
+          Positioned(
+            right: 40,
+            top: -20,
+            child: Container(
+              width: 70,
+              height: 70,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: Colors.white.withValues(alpha: 0.08),
+              ),
+            ),
+          ),
+          Positioned(
+            right: -20,
+            bottom: -10,
+            child: Container(
+              width: 90,
+              height: 90,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: Colors.white.withValues(alpha: 0.12),
+              ),
+            ),
+          ),
+        ];
+      case 3:
+      default:
+        return [
+          Positioned(
+            left: -40,
+            bottom: -40,
+            child: Transform.rotate(
+              angle: 0.8,
+              child: Container(
+                width: 140,
+                height: 140,
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(32),
+                  color: Colors.white.withValues(alpha: 0.14),
+                ),
+              ),
+            ),
+          ),
+          Positioned(
+            right: -20,
+            top: 20,
+            child: Container(
+              width: 80,
+              height: 140,
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(40),
+                color: Colors.white.withValues(alpha: 0.10),
+              ),
+            ),
+          ),
+        ];
     }
-    if (account.logoAsset != null) {
-      return account.color.withValues(alpha: 0.20);
-    }
-    return Colors.black.withValues(alpha: 0.03);
   }
 
   @override
@@ -60,155 +194,156 @@ class AccountItem extends StatelessWidget {
 
     return PressableScale(
       onTap: onTap,
+      pressedScale: 0.98,
       child: Container(
-        decoration: BoxDecoration(
-          color: _cardBackground(context),
-          borderRadius: BorderRadius.circular(20),
-          boxShadow: [
-            BoxShadow(
-              color: _shadowColor(context),
-              blurRadius: 20,
-              offset: const Offset(0, 8),
-            ),
-          ],
-        ),
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
-          child: Row(
-            children: [
-              // ── Account Icon / Logo ──
-              Container(
-                width: 44,
-                height: 44,
-                decoration: BoxDecoration(
-                  gradient: account.logoAsset == null
-                      ? LinearGradient(
-                          begin: Alignment.topLeft,
-                          end: Alignment.bottomRight,
-                          colors: [
-                            account.color.withValues(alpha: 0.15),
-                            account.color.withValues(alpha: 0.06),
-                          ],
-                        )
-                      : null,
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: account.logoAsset != null
-                    ? ClipRRect(
-                        borderRadius: BorderRadius.circular(12),
-                        child: Image.asset(
-                          account.logoAsset!,
-                          fit: BoxFit.cover,
-                        ),
-                      )
-                    : Center(
-                        child: Icon(
-                          IconUtils.getIcon(account.iconCodePoint),
-                          color: account.color,
-                          size: 22,
-                        ),
-                      ),
-              ),
-              const Gap(14),
-
-              // ── Name + Balance (two lines) ──
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      account.name,
-                      style: TextStyle(
-                        color: colored
-                            ? Colors.white.withValues(alpha: 0.95)
-                            : AppTheme.textColor(context),
-                        fontWeight: FontWeight.w700,
-                        fontSize: 15,
-                        letterSpacing: -0.2,
-                      ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    const Gap(3),
-                    isPrivate
-                        ? Text(
-                            '••••••',
-                            style: TextStyle(
+        decoration: _cardDecoration(context),
+        clipBehavior: Clip.antiAlias,
+        child: Stack(
+          children: [
+            ..._buildBackgroundShapes(colored),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+              child: Row(
+                children: [
+                  // ── Account Icon / Logo ──
+                  Container(
+                    width: 48,
+                    height: 48,
+                    decoration: BoxDecoration(
+                      color: account.logoAsset == null
+                          ? (colored
+                                ? Colors.white.withValues(alpha: 0.15)
+                                : account.color.withValues(alpha: 0.1))
+                          : null,
+                      border: account.logoAsset == null
+                          ? Border.all(
                               color: colored
-                                  ? Colors.white.withValues(alpha: 0.5)
-                                  : AppTheme.textLightColor(
-                                      context,
-                                    ).withValues(alpha: 0.45),
-                              fontWeight: FontWeight.w800,
-                              fontSize: 14,
-                              letterSpacing: 3,
+                                  ? Colors.white.withValues(alpha: 0.25)
+                                  : account.color.withValues(alpha: 0.15),
+                              width: 1,
+                            )
+                          : null,
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                    child: account.logoAsset != null
+                        ? ClipRRect(
+                            borderRadius: BorderRadius.circular(16),
+                            child: Image.asset(
+                              account.logoAsset!,
+                              fit: BoxFit.cover,
                             ),
                           )
-                        : AnimatedCounter(
-                            value: balance,
-                            formatter: (v) => NumberFormat.currency(
-                              symbol: currencySymbol,
-                            ).format(v),
-                            duration: const Duration(milliseconds: 600),
-                            style: TextStyle(
-                              color: colored
-                                  ? Colors.white.withValues(alpha: 0.85)
-                                  : AppTheme.textLightColor(context),
-                              fontWeight: FontWeight.w600,
-                              fontSize: 14,
-                              letterSpacing: -0.2,
+                        : Center(
+                            child: Icon(
+                              IconUtils.getIcon(account.iconCodePoint),
+                              color: colored ? Colors.white : account.color,
+                              size: 24,
                             ),
                           ),
+                  ),
+                  const Gap(16),
+
+                  // ── Name + Balance (two lines) ──
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          account.name,
+                          style: TextStyle(
+                            color: colored
+                                ? Colors.white.withValues(alpha: 0.85)
+                                : AppTheme.textLightColor(context),
+                            fontWeight: FontWeight.w600,
+                            fontSize: 13,
+                            letterSpacing: -0.1,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        const Gap(2),
+                        isPrivate
+                            ? Text(
+                                '••••••',
+                                style: TextStyle(
+                                  color: colored
+                                      ? Colors.white
+                                      : AppTheme.textColor(context),
+                                  fontWeight: FontWeight.w800,
+                                  fontSize: 18,
+                                  letterSpacing: 2,
+                                ),
+                              )
+                            : AnimatedCounter(
+                                value: balance,
+                                formatter: (v) => NumberFormat.currency(
+                                  symbol: currencySymbol,
+                                ).format(v),
+                                duration: const Duration(milliseconds: 600),
+                                style: TextStyle(
+                                  color: colored
+                                      ? Colors.white
+                                      : AppTheme.textColor(context),
+                                  fontWeight: FontWeight.w700,
+                                  fontSize: 18,
+                                  letterSpacing: -0.5,
+                                ),
+                              ),
+                      ],
+                    ),
+                  ),
+
+                  // ── Privacy Toggle ──
+                  if (onPrivateToggle != null) ...[
+                    GestureDetector(
+                      onTap: onPrivateToggle,
+                      behavior: HitTestBehavior.opaque,
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 4,
+                          vertical: 8,
+                        ),
+                        child: Icon(
+                          isPrivate
+                              ? Icons.visibility_off_rounded
+                              : Icons.visibility_rounded,
+                          size: 20,
+                          color: colored
+                              ? Colors.white.withValues(
+                                  alpha: isPrivate ? 0.5 : 0.8,
+                                )
+                              : (isPrivate
+                                    ? AppTheme.textLightColor(
+                                        context,
+                                      ).withValues(alpha: 0.4)
+                                    : AppTheme.primaryColor(
+                                        context,
+                                      ).withValues(alpha: 0.6)),
+                        ),
+                      ),
+                    ),
                   ],
-                ),
+
+                  // ── Trailing (drag handle etc.) ──
+                  if (trailing != null) ...[
+                    const Gap(8),
+                    Theme(
+                      data: Theme.of(context).copyWith(
+                        iconTheme: IconThemeData(
+                          color: colored
+                              ? Colors.white.withValues(alpha: 0.5)
+                              : AppTheme.textLightColor(
+                                  context,
+                                ).withValues(alpha: 0.3),
+                        ),
+                      ),
+                      child: trailing!,
+                    ),
+                  ],
+                ],
               ),
-
-              // ── Privacy Toggle ──
-              if (onPrivateToggle != null) ...[
-                GestureDetector(
-                  onTap: onPrivateToggle,
-                  behavior: HitTestBehavior.opaque,
-                  child: Padding(
-                    padding: const EdgeInsets.all(6),
-                    child: Icon(
-                      isPrivate
-                          ? Icons.visibility_off_rounded
-                          : Icons.visibility_rounded,
-                      size: 18,
-                      color: colored
-                          ? Colors.white.withValues(
-                              alpha: isPrivate ? 0.4 : 0.8,
-                            )
-                          : (isPrivate
-                                ? AppTheme.textLightColor(
-                                    context,
-                                  ).withValues(alpha: 0.35)
-                                : AppTheme.primaryColor(
-                                    context,
-                                  ).withValues(alpha: 0.55)),
-                    ),
-                  ),
-                ),
-              ],
-
-              // ── Trailing (drag handle etc.) ──
-              if (trailing != null) ...[
-                const Gap(4),
-                Theme(
-                  data: Theme.of(context).copyWith(
-                    iconTheme: IconThemeData(
-                      color: colored
-                          ? Colors.white.withValues(alpha: 0.4)
-                          : AppTheme.textLightColor(
-                              context,
-                            ).withValues(alpha: 0.2),
-                    ),
-                  ),
-                  child: trailing!,
-                ),
-              ],
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );

@@ -11,6 +11,7 @@ import 'package:koin/core/theme.dart';
 import 'package:koin/core/utils/haptic_utils.dart';
 import 'package:koin/core/utils/icon_utils.dart';
 import 'package:koin/core/providers/settings_provider.dart';
+import 'package:koin/core/utils/snackbar_utils.dart';
 import 'package:koin/core/widgets/koin_back_button.dart';
 import 'package:koin/core/widgets/pressable_scale.dart';
 import 'package:uuid/uuid.dart';
@@ -116,9 +117,11 @@ class _AddEditDebtScreenState extends ConsumerState<AddEditDebtScreen>
     if (isEdit) {
       await ref.read(debtsProvider.notifier).updateDebt(debt);
       if (mounted) {
-        ScaffoldMessenger.of(
+        KoinSnackBar.success(
           context,
-        ).showSnackBar(const SnackBar(content: Text('Debt updated')));
+          'Debt updated',
+          subtitle: 'Your record has been saved successfully',
+        );
       }
     } else {
       await ref.read(debtsProvider.notifier).addDebt(debt);

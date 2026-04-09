@@ -13,6 +13,7 @@ import 'package:koin/core/utils/haptic_utils.dart';
 import 'package:gap/gap.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:koin/core/utils/icon_utils.dart';
+import 'package:koin/core/utils/snackbar_utils.dart';
 import 'package:uuid/uuid.dart';
 import 'package:koin/core/widgets/koin_back_button.dart';
 import 'package:koin/core/widgets/pressable_scale.dart';
@@ -74,15 +75,28 @@ class _AddEditPlannedPaymentScreenState
   Future<void> _savePayment() async {
     if (!_formKey.currentState!.validate()) return;
     if (_selectedCategoryId == null) {
-      ScaffoldMessenger.of(
+      KoinSnackBar.error(
         context,
-      ).showSnackBar(const SnackBar(content: Text('Please select category')));
+        'Category required',
+        subtitle: 'Please select a category',
+      );
       return;
     }
 
     if (_selectedAccountId == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please select a payment account')),
+      KoinSnackBar.error(
+        context,
+        'Account required',
+        subtitle: 'Please select a payment account',
+      );
+      return;
+    }
+
+    if (_titleController.text.trim().isEmpty) {
+      KoinSnackBar.error(
+        context,
+        'Name required',
+        subtitle: 'Please provide a name for this payment',
       );
       return;
     }

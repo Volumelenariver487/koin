@@ -607,9 +607,19 @@ class _AnalysisScreenState extends ConsumerState<AnalysisScreen> {
                   _showPieChart = !_showPieChart;
                 });
               },
-              icon: Icon(
-                Icons.flip_rounded,
-                color: AppTheme.primaryColor(context),
+              icon: AnimatedSwitcher(
+                duration: const Duration(milliseconds: 600),
+                switchInCurve: Curves.easeOutBack,
+                switchOutCurve: Curves.easeInBack,
+                transitionBuilder: _buildFlipTransition,
+                child: Transform.scale(
+                  key: ValueKey(_showPieChart),
+                  scaleX: _showPieChart ? -1 : 1,
+                  child: Icon(
+                    Icons.flip_rounded,
+                    color: AppTheme.primaryColor(context),
+                  ),
+                ),
               ),
               style: IconButton.styleFrom(
                 backgroundColor: AppTheme.primaryColor(
@@ -624,27 +634,7 @@ class _AnalysisScreenState extends ConsumerState<AnalysisScreen> {
           duration: const Duration(milliseconds: 600),
           switchInCurve: Curves.easeOutBack,
           switchOutCurve: Curves.easeInBack,
-          transitionBuilder: (Widget child, Animation<double> animation) {
-            return AnimatedBuilder(
-              animation: animation,
-              child: child,
-              builder: (context, widget) {
-                final isEntering = (widget?.key == ValueKey(_showPieChart));
-                final rotation = isEntering
-                    ? (1 - animation.value) * pi
-                    : -(1 - animation.value) * pi;
-                return Transform(
-                  transform: Matrix4.identity()
-                    ..setEntry(3, 2, 0.001)
-                    ..rotateY(rotation),
-                  alignment: Alignment.center,
-                  child: rotation.abs() <= (pi / 2 + 0.01)
-                      ? widget
-                      : const SizedBox.shrink(),
-                );
-              },
-            );
-          },
+          transitionBuilder: _buildFlipTransition,
           layoutBuilder: (Widget? currentChild, List<Widget> previousChildren) {
             return Stack(
               alignment: Alignment.center,
@@ -1124,6 +1114,28 @@ class _AnalysisScreenState extends ConsumerState<AnalysisScreen> {
             .slideY(begin: 0.2, delay: 400.ms, duration: 400.ms)
             .fadeIn(),
       ],
+    );
+  }
+
+  Widget _buildFlipTransition(Widget child, Animation<double> animation) {
+    return AnimatedBuilder(
+      animation: animation,
+      child: child,
+      builder: (context, widget) {
+        final isEntering = (widget?.key == ValueKey(_showPieChart));
+        final rotation = isEntering
+            ? (1 - animation.value) * pi
+            : -(1 - animation.value) * pi;
+        return Transform(
+          transform: Matrix4.identity()
+            ..setEntry(3, 2, 0.001)
+            ..rotateY(rotation),
+          alignment: Alignment.center,
+          child: rotation.abs() <= (pi / 2 + 0.01)
+              ? widget
+              : const SizedBox.shrink(),
+        );
+      },
     );
   }
 }

@@ -9,6 +9,8 @@ class AppTransaction {
   final String categoryId;
   final String accountId;
   final String? toAccountId;
+  final String? plannedPaymentId;
+  final String? debtRepaymentId;
 
   AppTransaction({
     required this.id,
@@ -19,7 +21,35 @@ class AppTransaction {
     required this.categoryId,
     required this.accountId,
     this.toAccountId,
+    this.plannedPaymentId,
+    this.debtRepaymentId,
   });
+
+  AppTransaction copyWith({
+    String? id,
+    String? note,
+    double? amount,
+    DateTime? date,
+    TransactionType? type,
+    String? categoryId,
+    String? accountId,
+    String? toAccountId,
+    String? plannedPaymentId,
+    String? debtRepaymentId,
+  }) {
+    return AppTransaction(
+      id: id ?? this.id,
+      note: note ?? this.note,
+      amount: amount ?? this.amount,
+      date: date ?? this.date,
+      type: type ?? this.type,
+      categoryId: categoryId ?? this.categoryId,
+      accountId: accountId ?? this.accountId,
+      toAccountId: toAccountId ?? this.toAccountId,
+      plannedPaymentId: plannedPaymentId ?? this.plannedPaymentId,
+      debtRepaymentId: debtRepaymentId ?? this.debtRepaymentId,
+    );
+  }
 
   Map<String, dynamic> toMap() {
     return {
@@ -31,6 +61,8 @@ class AppTransaction {
       'categoryId': categoryId,
       'accountId': accountId,
       'toAccountId': toAccountId,
+      'plannedPaymentId': plannedPaymentId,
+      'debtRepaymentId': debtRepaymentId,
     };
   }
 
@@ -44,6 +76,8 @@ class AppTransaction {
       categoryId: map['categoryId'],
       accountId: map['accountId'] ?? 'default_account',
       toAccountId: map['toAccountId'],
+      plannedPaymentId: map['plannedPaymentId'],
+      debtRepaymentId: map['debtRepaymentId'],
     );
   }
 }

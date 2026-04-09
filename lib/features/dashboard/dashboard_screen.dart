@@ -24,6 +24,7 @@ import 'package:koin/features/accounts/screens/account_form_screen.dart';
 import 'package:koin/core/widgets/pressable_scale.dart';
 import 'package:koin/core/widgets/animated_counter.dart';
 import 'package:koin/core/widgets/spending_trend_chart.dart';
+import 'package:koin/core/utils/animation_utils.dart';
 
 class DashboardScreen extends ConsumerWidget {
   const DashboardScreen({super.key});
@@ -153,15 +154,7 @@ class DashboardScreen extends ConsumerWidget {
                 currency,
               ).animate().fade(delay: 500.ms, duration: 500.ms),
               const Gap(16),
-              _buildUpcomingPayments(context, ref, currency)
-                  .animate()
-                  .fade(delay: 550.ms, duration: 500.ms)
-                  .slideY(
-                    begin: 0.1,
-                    delay: 550.ms,
-                    duration: 500.ms,
-                    curve: Curves.easeOutCubic,
-                  ),
+              _buildUpcomingPayments(context, ref, currency),
               const Gap(32),
               _buildSectionHeader(
                 context,
@@ -653,81 +646,196 @@ class DashboardScreen extends ConsumerWidget {
     double balance,
     Currency currency,
   ) {
-    final hasCustomBg = account.cardColor != null;
-    final hasLogo = account.logoAsset != null;
-    final isColored = hasCustomBg || hasLogo;
+    final isColored = account.cardColor != null || account.logoAsset != null;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
-    // Resolve card background
-    Color cardBg;
-    if (hasCustomBg) {
-      cardBg = account.cardColor!.withValues(alpha: 0.95);
-    } else if (hasLogo) {
-      cardBg = account.color.withValues(alpha: 0.9);
-    } else {
-      cardBg = AppTheme.surfaceColor(context);
-    }
-
-    // Resolve shadow color
-    final shadowColor = isColored
-        ? (hasCustomBg ? account.cardColor! : account.color).withValues(
-            alpha: 0.25,
-          )
-        : Colors.black.withValues(alpha: 0.04);
-
-    return Container(
-      width: 170,
-      clipBehavior: Clip.antiAlias,
-      decoration: BoxDecoration(
-        color: cardBg,
-        borderRadius: BorderRadius.circular(20),
+    BoxDecoration decoration;
+    if (isColored) {
+      final baseColor = account.cardColor ?? account.color;
+      decoration = BoxDecoration(
+        borderRadius: BorderRadius.circular(24),
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            baseColor.withValues(alpha: 0.95),
+            baseColor.withValues(alpha: 0.85),
+          ],
+        ),
         boxShadow: [
           BoxShadow(
-            color: shadowColor,
+            color: baseColor.withValues(alpha: 0.3),
             blurRadius: 16,
-            offset: const Offset(0, 6),
+            offset: const Offset(0, 8),
           ),
         ],
-      ),
-      child: Stack(
-        children: [
-          // ── Decorative gradient overlay for colored cards ──
-          if (isColored)
-            Positioned.fill(
-              child: DecoratedBox(
+        border: Border.all(
+          color: Colors.white.withValues(alpha: 0.15),
+          width: 0.5,
+        ),
+      );
+    } else {
+      decoration = BoxDecoration(
+        color: AppTheme.surfaceColor(context),
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(
+          color: isDark
+              ? Colors.white.withValues(alpha: 0.08)
+              : AppTheme.dividerColor(context).withValues(alpha: 0.6),
+          width: 1.2,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: isDark
+                ? Colors.black.withValues(alpha: 0.3)
+                : Colors.black.withValues(alpha: 0.03),
+            blurRadius: 12,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      );
+    }
+
+    // Hash based shapes for variety (Synchronized with AccountItem)
+    final hash = account.id.hashCode.abs();
+    final shapeType = hash % 4;
+    List<Widget> backgroundShapes = [];
+    if (isColored) {
+      switch (shapeType) {
+        case 0:
+          backgroundShapes = [
+            Positioned(
+              right: -20,
+              top: -20,
+              child: Container(
+                width: 90,
+                height: 90,
                 decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                    colors: [
-                      Colors.white.withValues(alpha: 0.12),
-                      Colors.transparent,
-                      Colors.black.withValues(alpha: 0.08),
-                    ],
-                    stops: const [0.0, 0.5, 1.0],
+                  shape: BoxShape.circle,
+                  color: Colors.white.withValues(alpha: 0.12),
+                ),
+              ),
+            ),
+          ];
+          break;
+        case 1:
+          backgroundShapes = [
+            Positioned(
+              right: -30,
+              bottom: -40,
+              child: Transform.rotate(
+                angle: 0.4,
+                child: Container(
+                  width: 110,
+                  height: 110,
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(24),
+                    color: Colors.white.withValues(alpha: 0.10),
                   ),
                 ),
               ),
             ),
+          ];
+          break;
+        case 2:
+          backgroundShapes = [
+            Positioned(
+              right: 30,
+              top: -10,
+              child: Container(
+                width: 50,
+                height: 50,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: Colors.white.withValues(alpha: 0.08),
+                ),
+              ),
+            ),
+            Positioned(
+              right: -15,
+              bottom: -15,
+              child: Container(
+                width: 70,
+                height: 70,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: Colors.white.withValues(alpha: 0.12),
+                ),
+              ),
+            ),
+          ];
+          break;
+        case 3:
+        default:
+          backgroundShapes = [
+            Positioned(
+              left: -30,
+              bottom: -35,
+              child: Transform.rotate(
+                angle: 0.8,
+                child: Container(
+                  width: 90,
+                  height: 90,
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(20),
+                    color: Colors.white.withValues(alpha: 0.14),
+                  ),
+                ),
+              ),
+            ),
+            Positioned(
+              right: -10,
+              top: 10,
+              child: Container(
+                width: 50,
+                height: 90,
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(24),
+                  color: Colors.white.withValues(alpha: 0.10),
+                ),
+              ),
+            ),
+          ];
+          break;
+      }
+    }
+
+    return Container(
+      width: 180,
+      clipBehavior: Clip.antiAlias,
+      decoration: decoration,
+      child: Stack(
+        children: [
+          ...backgroundShapes,
           Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+            padding: const EdgeInsets.all(18),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 Row(
                   children: [
                     Container(
-                      width: 40,
-                      height: 40,
+                      width: 42,
+                      height: 42,
                       decoration: BoxDecoration(
-                        color: hasLogo
-                            ? Colors.white
-                            : account.color.withValues(alpha: 0.10),
-                        borderRadius: BorderRadius.circular(10),
+                        color: account.logoAsset == null
+                            ? (isColored
+                                  ? Colors.white.withValues(alpha: 0.15)
+                                  : account.color.withValues(alpha: 0.1))
+                            : null,
+                        border: account.logoAsset == null
+                            ? Border.all(
+                                color: isColored
+                                    ? Colors.white.withValues(alpha: 0.2)
+                                    : account.color.withValues(alpha: 0.15),
+                                width: 1,
+                              )
+                            : null,
+                        borderRadius: BorderRadius.circular(12),
                       ),
-                      child: hasLogo
+                      child: account.logoAsset != null
                           ? ClipRRect(
-                              borderRadius: BorderRadius.circular(10),
+                              borderRadius: BorderRadius.circular(12),
                               child: Image.asset(
                                 account.logoAsset!,
                                 fit: BoxFit.cover,
@@ -736,7 +844,7 @@ class DashboardScreen extends ConsumerWidget {
                           : Center(
                               child: Icon(
                                 IconUtils.getIcon(account.iconCodePoint),
-                                color: account.color,
+                                color: isColored ? Colors.white : account.color,
                                 size: 20,
                               ),
                             ),
@@ -746,48 +854,46 @@ class DashboardScreen extends ConsumerWidget {
                       child: Text(
                         account.name,
                         style: TextStyle(
-                          fontWeight: FontWeight.w700,
+                          fontWeight: FontWeight.w600,
                           fontSize: 13,
                           color: isColored
-                              ? Colors.white.withValues(alpha: 0.95)
-                              : AppTheme.textColor(context),
+                              ? Colors.white.withValues(alpha: 0.85)
+                              : AppTheme.textLightColor(context),
                           letterSpacing: -0.1,
                         ),
+                        maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                       ),
                     ),
                   ],
                 ),
                 const Spacer(),
-                if (account.excludeFromTotal)
-                  Text(
-                    '••••',
-                    style: TextStyle(
-                      color: isColored
-                          ? Colors.white.withValues(alpha: 0.6)
-                          : AppTheme.textColor(context).withValues(alpha: 0.6),
-                      fontWeight: FontWeight.w800,
-                      fontSize: 18,
-                      letterSpacing: 2,
-                    ),
-                  )
-                else
-                  AnimatedCounter(
-                    value: balance,
-                    formatter: (v) => NumberFormat.currency(
-                      symbol: currency.symbol,
-                    ).format(v),
-                    style: TextStyle(
-                      fontWeight: FontWeight.w800,
-                      fontSize: 16,
-                      letterSpacing: -0.5,
-                      color: isColored
-                          ? Colors.white.withValues(alpha: 0.9)
-                          : AppTheme.textColor(context),
-                    ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
+                account.excludeFromTotal
+                    ? Text(
+                        '••••••',
+                        style: TextStyle(
+                          color: isColored
+                              ? Colors.white
+                              : AppTheme.textColor(context),
+                          fontWeight: FontWeight.w800,
+                          fontSize: 18,
+                          letterSpacing: 2,
+                        ),
+                      )
+                    : AnimatedCounter(
+                        value: balance,
+                        formatter: (v) => NumberFormat.currency(
+                          symbol: currency.symbol,
+                        ).format(v),
+                        style: TextStyle(
+                          fontWeight: FontWeight.w700,
+                          fontSize: 19,
+                          letterSpacing: -0.5,
+                          color: isColored
+                              ? Colors.white
+                              : AppTheme.textColor(context),
+                        ),
+                      ),
               ],
             ),
           ),
@@ -1438,7 +1544,7 @@ class DashboardScreen extends ConsumerWidget {
     final paymentsAsync = ref.watch(plannedPaymentProvider);
     final categories = ref.watch(categoriesProvider).value ?? [];
 
-    return Column(
+    Widget content = Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         _buildSectionHeader(
@@ -1476,12 +1582,19 @@ class DashboardScreen extends ConsumerWidget {
                     categories.any((c) => c.id == payment.categoryId)
                     ? categories.firstWhere((c) => c.id == payment.categoryId)
                     : (categories.isNotEmpty ? categories.first : null);
-                return _buildUpcomingPaymentItem(
+
+                Widget item = _buildUpcomingPaymentItem(
                   context,
                   payment,
                   category,
                   currency,
                 );
+
+                if (!AnimationTracker.hasSeen('dash_pp_${payment.id}')) {
+                  item = item.animate().fadeIn().slideY(begin: 0.1);
+                }
+
+                return item;
               }).toList(),
             );
           },
@@ -1490,6 +1603,20 @@ class DashboardScreen extends ConsumerWidget {
         ),
       ],
     );
+
+    if (!AnimationTracker.hasSeen('dash_upcoming_section')) {
+      content = content
+          .animate()
+          .fade(delay: 550.ms, duration: 500.ms)
+          .slideY(
+            begin: 0.1,
+            delay: 550.ms,
+            duration: 500.ms,
+            curve: Curves.easeOutCubic,
+          );
+    }
+
+    return content;
   }
 
   Widget _buildUpcomingPaymentItem(

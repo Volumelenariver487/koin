@@ -8,6 +8,7 @@ import 'package:koin/core/theme.dart';
 import 'package:koin/features/planned_payments/add_edit_planned_payment_screen.dart';
 import 'package:koin/core/widgets/pressable_scale.dart';
 import 'package:koin/core/utils/haptic_utils.dart';
+import 'package:koin/core/utils/snackbar_utils.dart';
 import 'package:intl/intl.dart';
 import 'package:uuid/uuid.dart';
 import 'package:koin/core/providers/transaction_provider.dart';
@@ -37,6 +38,7 @@ class PlannedPaymentsScreen extends ConsumerWidget {
       date: DateTime.now(),
       categoryId: result.categoryId,
       accountId: result.accountId,
+      plannedPaymentId: payment.id,
     );
 
     DateTime nextDate = payment.nextDate;
@@ -82,8 +84,10 @@ class PlannedPaymentsScreen extends ConsumerWidget {
         .updatePlannedPayment(updatedPayment);
 
     if (context.mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Payment recorded successfully')),
+      KoinSnackBar.success(
+        context,
+        'Payment processed',
+        subtitle: 'Your planned payment has been completed',
       );
     }
   }

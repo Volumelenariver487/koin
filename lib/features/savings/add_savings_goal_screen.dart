@@ -9,6 +9,7 @@ import 'package:koin/core/providers/settings_provider.dart';
 import 'package:koin/core/theme.dart';
 import 'package:koin/core/utils/haptic_utils.dart';
 import 'package:koin/core/utils/icon_utils.dart';
+import 'package:koin/core/utils/snackbar_utils.dart';
 import 'package:koin/core/models/account.dart';
 import 'package:uuid/uuid.dart';
 import 'package:koin/core/providers/account_provider.dart';
@@ -95,25 +96,22 @@ class _AddSavingsGoalScreenState extends ConsumerState<AddSavingsGoalScreen> {
   }
 
   void _save() {
-    if (_nameController.text.trim().isEmpty) {
-      HapticService.error();
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Please enter a goal name'),
-          backgroundColor: AppTheme.errorColor(context),
-        ),
+    final name = _nameController.text.trim();
+    if (name.isEmpty) {
+      KoinSnackBar.error(
+        context,
+        'Name required',
+        subtitle: 'Please enter a name for your savings goal',
       );
       return;
     }
 
-    final amount = double.tryParse(_amountController.text);
-    if (amount == null || amount <= 0) {
-      HapticService.error();
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Please enter a valid amount'),
-          backgroundColor: AppTheme.errorColor(context),
-        ),
+    final targetAmount = double.tryParse(_amountController.text) ?? 0.0;
+    if (targetAmount <= 0) {
+      KoinSnackBar.error(
+        context,
+        'Invalid amount',
+        subtitle: 'Target amount must be greater than zero',
       );
       return;
     }
@@ -121,7 +119,7 @@ class _AddSavingsGoalScreenState extends ConsumerState<AddSavingsGoalScreen> {
     final goal = SavingsGoal(
       id: widget.goal?.id ?? const Uuid().v4(),
       name: _nameController.text.trim(),
-      targetAmount: amount,
+      targetAmount: targetAmount,
       currentAmount: widget.goal?.currentAmount ?? 0.0,
       startDate: _startDate,
       endDate: _endDate,

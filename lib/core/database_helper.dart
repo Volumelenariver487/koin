@@ -29,7 +29,7 @@ class DatabaseHelper {
 
     return await openDatabase(
       path,
-      version: 19,
+      version: 21,
       onCreate: _createDB,
       onUpgrade: _onUpgrade,
     );
@@ -173,6 +173,24 @@ CREATE TABLE app_settings (
     if (oldVersion < 19) {
       try {
         await db.execute('ALTER TABLE accounts ADD COLUMN cardColorHex TEXT');
+      } catch (e) {
+        // Column might already exist
+      }
+    }
+    if (oldVersion < 20) {
+      try {
+        await db.execute(
+          'ALTER TABLE transactions ADD COLUMN plannedPaymentId TEXT',
+        );
+      } catch (e) {
+        // Column might already exist
+      }
+    }
+    if (oldVersion < 21) {
+      try {
+        await db.execute(
+          'ALTER TABLE transactions ADD COLUMN debtRepaymentId TEXT',
+        );
       } catch (e) {
         // Column might already exist
       }
@@ -328,9 +346,13 @@ CREATE TABLE transactions (
   categoryId $textType,
   accountId $textType,
   toAccountId TEXT,
+  plannedPaymentId TEXT,
+  debtRepaymentId TEXT,
   FOREIGN KEY (categoryId) REFERENCES categories (id) ON DELETE SET NULL,
   FOREIGN KEY (accountId) REFERENCES accounts (id) ON DELETE SET NULL,
-  FOREIGN KEY (toAccountId) REFERENCES accounts (id) ON DELETE SET NULL
+  FOREIGN KEY (toAccountId) REFERENCES accounts (id) ON DELETE SET NULL,
+  FOREIGN KEY (plannedPaymentId) REFERENCES planned_payments (id) ON DELETE SET NULL,
+  FOREIGN KEY (debtRepaymentId) REFERENCES debt_repayments (id) ON DELETE SET NULL
 )
 ''');
 
@@ -586,9 +608,115 @@ CREATE TABLE transactions (
     );
   }
 
-  Future<int> deleteTransaction(String id) async {
+  Future<Map<String, dynamic>> deleteTransaction(String id) async {
     final db = await instance.database;
-    return await db.delete('transactions', where: 'id = ?', whereArgs: [id]);
+    return await db.transaction((txn) async {
+      // 1. Get the transaction
+      final maps = await txn.query(
+        'transactions',
+        where: 'id = ?',
+        whereArgs: [id],
+      );
+
+      String? rolledBackPlannedPaymentId;
+      String? affectedDebtId;
+
+      if (maps.isNotEmpty) {
+        final transaction = AppTransaction.fromMap(maps.first);
+
+        // 2. Check if it's linked to a planned payment
+        if (transaction.plannedPaymentId != null) {
+          final ppMaps = await txn.query(
+            'planned_payments',
+            where: 'id = ?',
+            whereArgs: [transaction.plannedPaymentId],
+          );
+
+          if (ppMaps.isNotEmpty) {
+            final payment = PlannedPayment.fromMap(ppMaps.first);
+
+            // 3. Rollback nextDate
+            DateTime prevDate = payment.nextDate;
+            switch (payment.frequency) {
+              case PaymentFrequency.daily:
+                prevDate = prevDate.subtract(const Duration(days: 1));
+                break;
+              case PaymentFrequency.weekly:
+                prevDate = prevDate.subtract(const Duration(days: 7));
+                break;
+              case PaymentFrequency.biWeekly:
+                prevDate = prevDate.subtract(const Duration(days: 14));
+                break;
+              case PaymentFrequency.monthly:
+                prevDate = DateTime(
+                  prevDate.year,
+                  prevDate.month - 1,
+                  prevDate.day,
+                );
+                break;
+              case PaymentFrequency.quarterly:
+                prevDate = DateTime(
+                  prevDate.year,
+                  prevDate.month - 3,
+                  prevDate.day,
+                );
+                break;
+              case PaymentFrequency.yearly:
+                prevDate = DateTime(
+                  prevDate.year - 1,
+                  prevDate.month,
+                  prevDate.day,
+                );
+                break;
+            }
+
+            // 4. Update the planned payment
+            await txn.update(
+              'planned_payments',
+              {'nextDate': prevDate.toIso8601String()},
+              where: 'id = ?',
+              whereArgs: [payment.id],
+            );
+            rolledBackPlannedPaymentId = payment.id;
+          }
+        }
+
+        // 6. Check if it's linked to a debt repayment
+        if (transaction.debtRepaymentId != null) {
+          final repaymentMaps = await txn.query(
+            'debt_repayments',
+            where: 'id = ?',
+            whereArgs: [transaction.debtRepaymentId],
+          );
+
+          if (repaymentMaps.isNotEmpty) {
+            final repayment = DebtRepayment.fromMap(repaymentMaps.first);
+            affectedDebtId = repayment.debtId;
+
+            // Delete the debt repayment
+            await txn.delete(
+              'debt_repayments',
+              where: 'id = ?',
+              whereArgs: [repayment.id],
+            );
+
+            // Update the debt's currentAmount
+            await txn.execute(
+              'UPDATE debts SET currentAmount = currentAmount - ? WHERE id = ?',
+              [repayment.amount, repayment.debtId],
+            );
+          }
+        }
+      }
+
+      // 7. Delete the transaction
+      await txn.delete('transactions', where: 'id = ?', whereArgs: [id]);
+
+      return {
+        'plannedPaymentId': rolledBackPlannedPaymentId,
+        'debtId': affectedDebtId,
+      };
+    });
   }
 
   // Savings Goals commands

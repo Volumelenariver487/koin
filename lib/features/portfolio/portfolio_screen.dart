@@ -19,6 +19,7 @@ import 'package:koin/core/theme.dart';
 import 'package:koin/core/utils/slide_up_route.dart';
 import 'package:koin/core/widgets/animated_counter.dart';
 import 'package:koin/core/widgets/pressable_scale.dart';
+import 'package:koin/core/utils/snackbar_utils.dart';
 import 'package:koin/features/savings/add_savings_goal_screen.dart';
 import 'package:koin/features/savings/savings_details_screen.dart';
 import 'package:koin/features/debts/debts_tab.dart';
@@ -29,6 +30,7 @@ import 'package:koin/core/models/planned_payment.dart';
 import 'package:uuid/uuid.dart';
 import 'package:koin/core/providers/transaction_provider.dart';
 import 'package:koin/core/widgets/payment_confirmation_sheet.dart';
+import 'package:koin/core/utils/animation_utils.dart';
 
 class PortfolioScreen extends ConsumerStatefulWidget {
   const PortfolioScreen({super.key});
@@ -84,6 +86,7 @@ class _PortfolioScreenState extends ConsumerState<PortfolioScreen>
       date: DateTime.now(),
       categoryId: result.categoryId,
       accountId: result.accountId,
+      plannedPaymentId: payment.id,
     );
 
     DateTime nextDate = payment.nextDate;
@@ -129,8 +132,10 @@ class _PortfolioScreenState extends ConsumerState<PortfolioScreen>
         .updatePlannedPayment(updatedPayment);
 
     if (context.mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Payment recorded successfully')),
+      KoinSnackBar.success(
+        context,
+        'Payment recorded successfully',
+        subtitle: 'Your payment history has been updated',
       );
     }
   }
@@ -646,228 +651,234 @@ class _PortfolioScreenState extends ConsumerState<PortfolioScreen>
         ? Color(int.parse(category.colorHex.replaceFirst('#', '0xFF')))
         : AppTheme.primaryColor(context);
 
-    return PressableScale(
-          onTap: () {
-            HapticService.light();
-            Navigator.push(
-              context,
-              SlideUpRoute(page: AddEditPlannedPaymentScreen(payment: payment)),
-            );
-          },
-          child: Container(
-            margin: const EdgeInsets.only(bottom: 16),
-            padding: const EdgeInsets.all(20),
-            decoration: BoxDecoration(
-              color: AppTheme.surfaceColor(context),
-              borderRadius: BorderRadius.circular(24),
-              border: Border.all(
-                color: AppTheme.textLightColor(context).withValues(alpha: 0.1),
-                width: 1,
+    final cardContent = Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: categoryColor.withValues(alpha: 0.15),
+                borderRadius: BorderRadius.circular(16),
               ),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.03),
-                  blurRadius: 20,
-                  offset: const Offset(0, 8),
-                ),
-              ],
+              child: Icon(
+                category != null
+                    ? IconData(
+                        category.iconCodePoint,
+                        fontFamily: 'MaterialIcons',
+                      )
+                    : Icons.category_rounded,
+                color: categoryColor,
+                size: 24,
+              ),
             ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  crossAxisAlignment: CrossAxisAlignment.center,
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.all(12),
-                      decoration: BoxDecoration(
-                        color: categoryColor.withValues(alpha: 0.15),
-                        borderRadius: BorderRadius.circular(16),
-                      ),
-                      child: Icon(
-                        category != null
-                            ? IconData(
-                                category.iconCodePoint,
-                                fontFamily: 'MaterialIcons',
-                              )
-                            : Icons.category_rounded,
-                        color: categoryColor,
-                        size: 24,
-                      ),
+            const Gap(16),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    payment.title,
+                    style: const TextStyle(
+                      fontWeight: FontWeight.w700,
+                      fontSize: 17,
+                      letterSpacing: -0.3,
                     ),
-                    const Gap(16),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            payment.title,
-                            style: const TextStyle(
-                              fontWeight: FontWeight.w700,
-                              fontSize: 17,
-                              letterSpacing: -0.3,
-                            ),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  const Gap(6),
+                  Row(
+                    children: [
+                      Icon(
+                        Icons.refresh_rounded,
+                        size: 14,
+                        color: AppTheme.textLightColor(context),
+                      ),
+                      const Gap(4),
+                      Text(
+                        payment.frequency.name.toUpperCase(),
+                        style: TextStyle(
+                          color: AppTheme.textLightColor(context),
+                          fontSize: 11,
+                          fontWeight: FontWeight.w700,
+                          letterSpacing: 0.5,
+                        ),
+                      ),
+                      if (payment.isAutoProcess) ...[
+                        const Gap(8),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 6,
+                            vertical: 2,
                           ),
-                          const Gap(6),
-                          Row(
+                          decoration: BoxDecoration(
+                            color: AppTheme.primaryColor(
+                              context,
+                            ).withValues(alpha: 0.1),
+                            borderRadius: BorderRadius.circular(6),
+                          ),
+                          child: Row(
                             children: [
                               Icon(
-                                Icons.refresh_rounded,
-                                size: 14,
-                                color: AppTheme.textLightColor(context),
+                                Icons.bolt_rounded,
+                                size: 10,
+                                color: AppTheme.primaryColor(context),
                               ),
-                              const Gap(4),
+                              const Gap(2),
                               Text(
-                                payment.frequency.name.toUpperCase(),
+                                'AUTO',
                                 style: TextStyle(
-                                  color: AppTheme.textLightColor(context),
-                                  fontSize: 11,
-                                  fontWeight: FontWeight.w700,
-                                  letterSpacing: 0.5,
+                                  color: AppTheme.primaryColor(context),
+                                  fontSize: 9,
+                                  fontWeight: FontWeight.w800,
                                 ),
                               ),
-                              if (payment.isAutoProcess) ...[
-                                const Gap(8),
-                                Container(
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 6,
-                                    vertical: 2,
-                                  ),
-                                  decoration: BoxDecoration(
-                                    color: AppTheme.primaryColor(
-                                      context,
-                                    ).withValues(alpha: 0.1),
-                                    borderRadius: BorderRadius.circular(6),
-                                  ),
-                                  child: Row(
-                                    children: [
-                                      Icon(
-                                        Icons.bolt_rounded,
-                                        size: 10,
-                                        color: AppTheme.primaryColor(context),
-                                      ),
-                                      const Gap(2),
-                                      Text(
-                                        'AUTO',
-                                        style: TextStyle(
-                                          color: AppTheme.primaryColor(context),
-                                          fontSize: 9,
-                                          fontWeight: FontWeight.w800,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              ],
                             ],
                           ),
-                        ],
+                        ),
+                      ],
+                    ],
+                  ),
+                ],
+              ),
+            ),
+            Text(
+              "${isExpense ? '-' : '+'}${NumberFormat.currency(symbol: currency.symbol).format(payment.amount)}",
+              style: TextStyle(
+                color: amountColor,
+                fontWeight: FontWeight.w800,
+                fontSize: 18,
+                letterSpacing: -0.5,
+              ),
+            ),
+          ],
+        ),
+        const Gap(20),
+        Container(
+          height: 1,
+          color: AppTheme.textLightColor(context).withValues(alpha: 0.1),
+        ),
+        const Gap(16),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: AppTheme.backgroundColor(context),
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(
+                    Icons.calendar_today_rounded,
+                    size: 14,
+                    color: AppTheme.textLightColor(context),
+                  ),
+                ),
+                const Gap(12),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Next Payment',
+                      style: TextStyle(
+                        color: AppTheme.textLightColor(context),
+                        fontSize: 11,
+                        fontWeight: FontWeight.w500,
                       ),
                     ),
                     Text(
-                      "${isExpense ? '-' : '+'}${NumberFormat.currency(symbol: currency.symbol).format(payment.amount)}",
-                      style: TextStyle(
-                        color: amountColor,
-                        fontWeight: FontWeight.w800,
-                        fontSize: 18,
-                        letterSpacing: -0.5,
-                      ),
-                    ),
-                  ],
-                ),
-                const Gap(20),
-                Container(
-                  height: 1,
-                  color: AppTheme.textLightColor(
-                    context,
-                  ).withValues(alpha: 0.1),
-                ),
-                const Gap(16),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Row(
-                      children: [
-                        Container(
-                          padding: const EdgeInsets.all(8),
-                          decoration: BoxDecoration(
-                            color: AppTheme.backgroundColor(context),
-                            shape: BoxShape.circle,
-                          ),
-                          child: Icon(
-                            Icons.calendar_today_rounded,
-                            size: 14,
-                            color: AppTheme.textLightColor(context),
-                          ),
-                        ),
-                        const Gap(12),
-                        Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              'Next Payment',
-                              style: TextStyle(
-                                color: AppTheme.textLightColor(context),
-                                fontSize: 11,
-                                fontWeight: FontWeight.w500,
-                              ),
-                            ),
-                            Text(
-                              DateFormat.yMMMd().format(payment.nextDate),
-                              style: const TextStyle(
-                                fontWeight: FontWeight.w700,
-                                fontSize: 13,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ],
-                    ),
-                    InkWell(
-                      onTap: () {
-                        HapticService.light();
-                        _paySubscription(context, payment);
-                      },
-                      borderRadius: BorderRadius.circular(12),
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 16,
-                          vertical: 10,
-                        ),
-                        decoration: BoxDecoration(
-                          color: AppTheme.primaryColor(context),
-                          borderRadius: BorderRadius.circular(12),
-                          boxShadow: [
-                            BoxShadow(
-                              color: AppTheme.primaryColor(
-                                context,
-                              ).withValues(alpha: 0.3),
-                              blurRadius: 8,
-                              offset: const Offset(0, 4),
-                            ),
-                          ],
-                        ),
-                        child: const Text(
-                          'Pay Now',
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 13,
-                            fontWeight: FontWeight.w700,
-                          ),
-                        ),
+                      DateFormat.yMMMd().format(payment.nextDate),
+                      style: const TextStyle(
+                        fontWeight: FontWeight.w700,
+                        fontSize: 13,
                       ),
                     ),
                   ],
                 ),
               ],
             ),
+            InkWell(
+              onTap: () {
+                HapticService.light();
+                _paySubscription(context, payment);
+              },
+              borderRadius: BorderRadius.circular(12),
+              child: Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 10,
+                ),
+                decoration: BoxDecoration(
+                  color: AppTheme.primaryColor(context),
+                  borderRadius: BorderRadius.circular(12),
+                  boxShadow: [
+                    BoxShadow(
+                      color: AppTheme.primaryColor(
+                        context,
+                      ).withValues(alpha: 0.3),
+                      blurRadius: 8,
+                      offset: const Offset(0, 4),
+                    ),
+                  ],
+                ),
+                child: const Text(
+                  'Pay Now',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 13,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ],
+    );
+
+    final cardItem = PressableScale(
+      onTap: () {
+        HapticService.light();
+        Navigator.push(
+          context,
+          SlideUpRoute(page: AddEditPlannedPaymentScreen(payment: payment)),
+        );
+      },
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 16),
+        padding: const EdgeInsets.all(20),
+        decoration: BoxDecoration(
+          color: AppTheme.surfaceColor(context),
+          borderRadius: BorderRadius.circular(24),
+          border: Border.all(
+            color: AppTheme.textLightColor(context).withValues(alpha: 0.1),
+            width: 1,
           ),
-        )
-        .animate()
-        .fade(delay: (index * 50).ms)
-        .slideY(begin: 0.1, curve: Curves.easeOutCubic);
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.03),
+              blurRadius: 20,
+              offset: const Offset(0, 8),
+            ),
+          ],
+        ),
+        child: cardContent,
+      ),
+    );
+
+    if (!AnimationTracker.hasSeen('port_pp_${payment.id}')) {
+      return cardItem
+          .animate()
+          .fade(delay: (index * 50).ms)
+          .slideY(begin: 0.1, curve: Curves.easeOutCubic);
+    }
+
+    return cardItem;
   }
 
   Widget _buildAddPlannedButton(BuildContext context) {

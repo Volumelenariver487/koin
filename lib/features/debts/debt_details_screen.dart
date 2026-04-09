@@ -12,8 +12,11 @@ import 'package:koin/core/utils/haptic_utils.dart';
 import 'package:koin/core/utils/slide_up_route.dart';
 import 'package:koin/features/debts/add_edit_debt_screen.dart';
 import 'package:koin/core/models/account.dart';
+import 'package:koin/core/models/transaction.dart';
 import 'package:koin/core/providers/account_provider.dart';
+import 'package:koin/core/providers/transaction_provider.dart';
 import 'package:koin/core/utils/icon_utils.dart';
+import 'package:koin/core/utils/snackbar_utils.dart';
 import 'package:koin/core/widgets/confirmation_sheet.dart';
 import 'package:uuid/uuid.dart';
 
@@ -1010,7 +1013,40 @@ class _AddRepaymentSheetState extends ConsumerState<_AddRepaymentSheet> {
                           await ref
                               .read(debtsProvider.notifier)
                               .addRepayment(repayment);
-                          if (context.mounted) Navigator.pop(context);
+
+                          // Automatically add a transaction
+                          final transaction = AppTransaction(
+                            id: const Uuid().v4(),
+                            amount: repayment.amount,
+                            date: repayment.date,
+                            type: widget.debt.type == DebtType.iOwe
+                                ? TransactionType.expense
+                                : TransactionType.income,
+                            categoryId: widget.debt.type == DebtType.iOwe
+                                ? 'cat_others'
+                                : 'cat_others_inc',
+                            accountId: repayment.accountId ?? 'default_account',
+                            note:
+                                'Debt Payment: ${widget.debt.personName}${repayment.note != null ? ' - ${repayment.note}' : ''}',
+                          );
+
+                          await ref
+                              .read(transactionProvider.notifier)
+                              .addTransaction(
+                                transaction.copyWith(
+                                  debtRepaymentId: repayment.id,
+                                ),
+                              );
+
+                          if (context.mounted) {
+                            KoinSnackBar.success(
+                              context,
+                              'Payment Logged',
+                              subtitle:
+                                  'Transaction added to ${selectedAccount?.name ?? 'Account'}',
+                            );
+                            Navigator.pop(context);
+                          }
                         },
                         style: ElevatedButton.styleFrom(
                           backgroundColor: Colors.transparent,

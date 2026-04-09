@@ -4,14 +4,17 @@ import 'package:koin/core/models/transaction.dart';
 import 'package:koin/core/models/transaction_filter.dart';
 import 'package:koin/core/providers/category_provider.dart';
 
+import 'package:koin/core/providers/planned_payment_provider.dart';
+import 'package:koin/core/providers/debt_provider.dart';
+
 class TransactionNotifier extends AsyncNotifier<List<AppTransaction>> {
   @override
   Future<List<AppTransaction>> build() async {
     return await DatabaseHelper.instance.getTransactions();
   }
 
-  Future<void> loadTransactions() async {
-    state = const AsyncValue.loading();
+  Future<void> loadTransactions({bool showLoading = true}) async {
+    if (showLoading) state = const AsyncValue.loading();
     state = await AsyncValue.guard(() async {
       return await DatabaseHelper.instance.getTransactions();
     });
@@ -19,17 +22,37 @@ class TransactionNotifier extends AsyncNotifier<List<AppTransaction>> {
 
   Future<void> addTransaction(AppTransaction transaction) async {
     await DatabaseHelper.instance.insertTransaction(transaction);
-    await loadTransactions();
+    await loadTransactions(showLoading: false);
   }
 
   Future<void> updateTransaction(AppTransaction transaction) async {
     await DatabaseHelper.instance.updateTransaction(transaction);
-    await loadTransactions();
+    await loadTransactions(showLoading: false);
   }
 
   Future<void> deleteTransaction(String id) async {
-    await DatabaseHelper.instance.deleteTransaction(id);
-    await loadTransactions();
+    final result = await DatabaseHelper.instance.deleteTransaction(id);
+    await loadTransactions(showLoading: false);
+
+    final plannedPaymentId = result['plannedPaymentId'] as String?;
+    final debtId = result['debtId'] as String?;
+
+    if (plannedPaymentId != null) {
+      // Force reload of planned payments if a rollback occurred
+      await ref.read(plannedPaymentProvider.notifier).loadPlannedPayments();
+    } else {
+      // Still invalidate just in case
+      ref.invalidate(plannedPaymentProvider);
+    }
+
+    if (debtId != null) {
+      // Force reload of debt data
+      ref.invalidate(debtRepaymentsProvider(debtId));
+      await ref.read(debtsProvider.notifier).loadDebts();
+    } else {
+      // Still invalidate just in case
+      ref.invalidate(debtsProvider);
+    }
   }
 }
 
