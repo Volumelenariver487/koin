@@ -515,97 +515,117 @@ class _DebtDetailsScreenState extends ConsumerState<DebtDetailsScreen> {
     required Color color,
     required int tileIndex,
   }) {
-    return Container(
-          margin: const EdgeInsets.only(bottom: 10),
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-          decoration: BoxDecoration(
-            color: AppTheme.surfaceColor(context),
-            borderRadius: BorderRadius.circular(18),
-            border: Border.all(
-              color: AppTheme.dividerColor(context).withValues(alpha: 0.3),
-            ),
-          ),
-          child: Row(
-            children: [
-              Container(
-                width: 40,
-                height: 40,
-                decoration: BoxDecoration(
-                  color: color.withValues(alpha: 0.08),
-                  borderRadius: BorderRadius.circular(13),
+    return Dismissible(
+      key: Key(repayment.id),
+      direction: DismissDirection.endToStart,
+      confirmDismiss: (direction) async {
+        return await ConfirmationSheet.show(
+          context: context,
+          title: 'Delete Payment?',
+          description:
+              'Are you sure you want to delete this payment of ${currencyFormat.format(repayment.amount)}? This action cannot be undone.',
+          confirmLabel: 'Delete Payment',
+          confirmColor: AppTheme.expenseColor(context),
+          icon: Icons.delete_outline_rounded,
+          isDanger: true,
+        );
+      },
+      onDismissed: (direction) {
+        ref.read(debtsProvider.notifier).deleteRepayment(repayment);
+      },
+      background: Container(
+        alignment: Alignment.centerRight,
+        padding: const EdgeInsets.only(right: 24),
+        margin: const EdgeInsets.only(bottom: 10),
+        decoration: BoxDecoration(
+          color: AppTheme.expenseColor(context),
+          borderRadius: BorderRadius.circular(18),
+        ),
+        child: const Icon(Icons.delete_outline_rounded, color: Colors.white),
+      ),
+      child:
+          Container(
+                margin: const EdgeInsets.only(bottom: 10),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 14,
                 ),
-                child: Icon(Icons.receipt_long_rounded, color: color, size: 18),
-              ),
-              const Gap(14),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+                decoration: BoxDecoration(
+                  color: AppTheme.surfaceColor(context),
+                  borderRadius: BorderRadius.circular(18),
+                  border: Border.all(
+                    color: AppTheme.dividerColor(
+                      context,
+                    ).withValues(alpha: 0.3),
+                  ),
+                ),
+                child: Row(
                   children: [
-                    Text(
-                      repayment.note?.isNotEmpty == true
-                          ? repayment.note!
-                          : 'Payment',
-                      style: TextStyle(
-                        color: AppTheme.textColor(context),
-                        fontWeight: FontWeight.w600,
-                        fontSize: 15,
-                        letterSpacing: -0.2,
+                    Container(
+                      width: 40,
+                      height: 40,
+                      decoration: BoxDecoration(
+                        color: color.withValues(alpha: 0.08),
+                        borderRadius: BorderRadius.circular(13),
+                      ),
+                      child: Icon(
+                        Icons.receipt_long_rounded,
+                        color: color,
+                        size: 18,
                       ),
                     ),
-                    const Gap(3),
+                    const Gap(14),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            repayment.note?.isNotEmpty == true
+                                ? repayment.note!
+                                : 'Payment',
+                            style: TextStyle(
+                              color: AppTheme.textColor(context),
+                              fontWeight: FontWeight.w600,
+                              fontSize: 15,
+                              letterSpacing: -0.2,
+                            ),
+                          ),
+                          const Gap(3),
+                          Text(
+                            DateFormat.yMMMd().format(repayment.date),
+                            style: TextStyle(
+                              color: AppTheme.textLightColor(context),
+                              fontSize: 12,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
                     Text(
-                      DateFormat.yMMMd().format(repayment.date),
+                      currencyFormat.format(repayment.amount),
                       style: TextStyle(
-                        color: AppTheme.textLightColor(context),
-                        fontSize: 12,
-                        fontWeight: FontWeight.w500,
+                        color: AppTheme.textColor(context),
+                        fontWeight: FontWeight.w700,
+                        fontSize: 16,
+                        letterSpacing: -0.3,
                       ),
                     ),
                   ],
                 ),
+              )
+              .animate()
+              .slideX(
+                begin: 0.1,
+                delay: Duration(milliseconds: 60 * tileIndex),
+                duration: 300.ms,
+                curve: Curves.easeOutCubic,
+              )
+              .fadeIn(
+                delay: Duration(milliseconds: 60 * tileIndex),
+                duration: 300.ms,
               ),
-              Text(
-                currencyFormat.format(repayment.amount),
-                style: TextStyle(
-                  color: AppTheme.textColor(context),
-                  fontWeight: FontWeight.w700,
-                  fontSize: 16,
-                  letterSpacing: -0.3,
-                ),
-              ),
-              const Gap(4),
-              SizedBox(
-                width: 36,
-                height: 36,
-                child: IconButton(
-                  padding: EdgeInsets.zero,
-                  icon: Icon(
-                    Icons.delete_outline_rounded,
-                    color: AppTheme.textLightColor(
-                      context,
-                    ).withValues(alpha: 0.5),
-                    size: 18,
-                  ),
-                  onPressed: () {
-                    HapticService.medium();
-                    ref.read(debtsProvider.notifier).deleteRepayment(repayment);
-                  },
-                ),
-              ),
-            ],
-          ),
-        )
-        .animate()
-        .slideX(
-          begin: 0.1,
-          delay: Duration(milliseconds: 60 * tileIndex),
-          duration: 300.ms,
-          curve: Curves.easeOutCubic,
-        )
-        .fadeIn(
-          delay: Duration(milliseconds: 60 * tileIndex),
-          duration: 300.ms,
-        );
+    );
   }
 }
 

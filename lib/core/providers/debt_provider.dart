@@ -2,6 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:koin/core/database_helper.dart';
 import 'package:koin/core/models/debt.dart';
 import 'package:koin/core/models/debt_repayment.dart';
+import 'package:koin/core/providers/transaction_provider.dart';
 
 class DebtsNotifier extends AsyncNotifier<List<Debt>> {
   @override
@@ -40,6 +41,7 @@ class DebtsNotifier extends AsyncNotifier<List<Debt>> {
   Future<void> deleteRepayment(DebtRepayment repayment) async {
     await DatabaseHelper.instance.deleteDebtRepayment(repayment);
     ref.invalidate(debtRepaymentsProvider(repayment.debtId));
+    ref.invalidate(transactionProvider);
     await loadDebts();
   }
 }
