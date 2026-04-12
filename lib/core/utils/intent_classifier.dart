@@ -271,6 +271,7 @@ class IntentClassifier {
       'sahod',
       'commission',
       'payout',
+      'got paid',
     ],
     'Personal': [
       'haircut',
@@ -712,19 +713,37 @@ class IntentClassifier {
     return null;
   }
 
-  /// Cleans the transcription by stripping out amounts, currency names, and command keywords.
-  static String extractCleanNote(String text, String? amountToRemove) {
+  /// Cleans the transcription by stripping out amounts, account names, currency names, and command keywords.
+  static String extractCleanNote(
+    String text,
+    String? amountToRemove, [
+    String? accountToRemove,
+  ]) {
     String refinedNote = text.toLowerCase();
+
+    // 0. Strips out the spoken account name sequence
+    if (accountToRemove != null) {
+      refinedNote = refinedNote.replaceFirst(
+        accountToRemove.toLowerCase(),
+        ' ',
+      );
+    }
 
     // 1. Strips out the spoken digit sequence
     if (amountToRemove != null) {
-      refinedNote = refinedNote.replaceFirst(amountToRemove.toLowerCase(), '');
+      refinedNote = refinedNote.replaceFirst(amountToRemove.toLowerCase(), ' ');
     }
 
     // 2. We don't remove generic english stops ("for", "on", "the") here because it makes
     // the finalised note string read like ungrammatical caveman-speak. We only remove
     // explicit verbal command triggers and monetary symbols.
     final wordsToStrip = [
+      'i',
+      'got',
+      'bought',
+      'paid',
+      'purchase',
+      'purchased',
       'add',
       'added',
       'spent',
@@ -742,6 +761,11 @@ class IntentClassifier {
       'buck',
       'php',
       'usd',
+      'thousand',
+      'hundred',
+      'million',
+      'k',
+      'm',
     ];
 
     for (final word in wordsToStrip) {
@@ -750,10 +774,25 @@ class IntentClassifier {
 
     // 3. Clean up loose spaces and capitalize the first letter smoothly
     refinedNote = refinedNote.replaceAll(RegExp(r'\s+'), ' ').trim();
+
+    // 4. Remove dangling prepositions left at the ends or beginnings of sentences
+    final prepositionsRegexFragment =
+        r'(?:\b(?:for|on|at|of|to|in|from|with|using|via|by)\s*)+';
+
+    // Remove from the end
+    refinedNote = refinedNote
+        .replaceAll(RegExp(prepositionsRegexFragment + r'$'), '')
+        .trim();
+
+    // Remove from the beginning
+    refinedNote = refinedNote
+        .replaceAll(RegExp(r'^' + prepositionsRegexFragment), '')
+        .trim();
+
     if (refinedNote.isNotEmpty) {
       refinedNote = refinedNote[0].toUpperCase() + refinedNote.substring(1);
     }
 
-    return refinedNote.isEmpty ? text : refinedNote;
+    return refinedNote;
   }
 }

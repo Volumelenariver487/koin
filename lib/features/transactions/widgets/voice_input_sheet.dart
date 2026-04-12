@@ -3,8 +3,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:koin/core/providers/voice_input_provider.dart';
 import 'package:koin/core/providers/category_provider.dart';
+import 'package:koin/core/providers/account_provider.dart';
 import 'package:koin/core/providers/transaction_provider.dart';
 import 'package:koin/core/providers/settings_provider.dart';
+import 'package:koin/core/providers/dashboard_provider.dart';
 import 'package:koin/core/utils/voice_command_parser.dart';
 import 'package:koin/core/utils/haptic_utils.dart';
 import 'package:koin/core/utils/icon_utils.dart';
@@ -12,6 +14,9 @@ import 'package:koin/core/models/transaction.dart';
 import 'package:koin/core/theme.dart';
 import 'package:koin/core/widgets/pressable_scale.dart';
 import 'package:gap/gap.dart';
+import 'package:koin/core/widgets/select_sheet.dart';
+import 'package:koin/core/widgets/transaction_type_selector.dart';
+import 'package:koin/core/widgets/account_item.dart';
 
 class VoiceInputSheet extends ConsumerStatefulWidget {
   const VoiceInputSheet({super.key});
@@ -27,10 +32,14 @@ class _VoiceInputSheetState extends ConsumerState<VoiceInputSheet>
   late final AnimationController _ringController;
 
   ParsedTransactionData? _parsedData;
+  late final TextEditingController _amountController;
+  late final TextEditingController _noteController;
 
   @override
   void initState() {
     super.initState();
+    _amountController = TextEditingController();
+    _noteController = TextEditingController();
     _pulseController = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 1500),
@@ -53,6 +62,8 @@ class _VoiceInputSheetState extends ConsumerState<VoiceInputSheet>
   void dispose() {
     _pulseController.dispose();
     _ringController.dispose();
+    _amountController.dispose();
+    _noteController.dispose();
     super.dispose();
   }
 
@@ -60,14 +71,22 @@ class _VoiceInputSheetState extends ConsumerState<VoiceInputSheet>
     final state = ref.read(voiceInputProvider);
     final categories = ref.read(categoriesProvider).value ?? [];
     final transactions = ref.read(transactionProvider).value ?? [];
+    final accounts = ref.read(accountProvider).value ?? [];
 
     if (state.lastWords.isNotEmpty) {
+      final parsed = VoiceCommandParser.parse(
+        state.lastWords,
+        categories,
+        transactions,
+        accounts,
+      );
+      _amountController.text =
+          parsed.amount?.toStringAsFixed(2).replaceAll(RegExp(r'\.00$'), '') ??
+          '';
+      _noteController.text = parsed.note;
+
       setState(() {
-        _parsedData = VoiceCommandParser.parse(
-          state.lastWords,
-          categories,
-          transactions,
-        );
+        _parsedData = parsed;
       });
     }
   }
@@ -91,6 +110,119 @@ class _VoiceInputSheetState extends ConsumerState<VoiceInputSheet>
     Navigator.pop(context, null);
   }
 
+  // ═══════════════════════════════════════════════════════
+  // Selection Helpers
+  // ═══════════════════════════════════════════════════════
+  Future<void> _editCategory() async {
+    final categories = ref.read(categoriesProvider).value ?? [];
+    final filteredCategories = categories
+        .where((c) => c.type == _parsedData!.type)
+        .toList();
+
+    final id = await showSelectSheet<String>(
+      context: context,
+      title: 'Category',
+      subtitle: 'Choose a category for this transaction',
+      itemCount: filteredCategories.length,
+      itemBuilder: (context, index) {
+        final cat = filteredCategories[index];
+        return SelectSheetItem(
+          name: cat.name,
+          accentColor: cat.color,
+          iconCodePoint: cat.iconCodePoint,
+          selected: cat.id == _parsedData!.category?.id,
+          onTap: () => Navigator.pop(context, cat.id),
+        );
+      },
+    );
+    if (id != null && mounted) {
+      final category = categories.firstWhere((c) => c.id == id);
+      setState(() {
+        _parsedData = _parsedData!.copyWith(category: category);
+      });
+    }
+  }
+
+  Future<void> _editAccount() async {
+    final accounts = ref.read(accountProvider).value ?? [];
+
+    final id = await showSelectSheet<String>(
+      context: context,
+      title: 'Account',
+      subtitle: 'Choose an account for this transaction',
+      itemCount: accounts.length,
+      itemBuilder: (context, index) {
+        final acc = accounts[index];
+        final isSelected = acc.id == _parsedData!.account?.id;
+        final stats = ref.read(dashboardStatsProvider);
+        final currency = ref.read(settingsProvider).currency;
+        final balance = stats.accountBalances[acc.id] ?? 0;
+
+        return AccountItem(
+          account: acc,
+          balance: balance,
+          currencySymbol: currency.symbol,
+          isSelected: isSelected,
+          onTap: () => Navigator.pop(context, acc.id),
+          onPrivateToggle: () {
+            final updatedAccount = acc.copyWith(
+              excludeFromTotal: !acc.excludeFromTotal,
+            );
+            ref.read(accountProvider.notifier).updateAccount(updatedAccount);
+          },
+        );
+      },
+    );
+    if (id != null && mounted) {
+      final account = accounts.firstWhere((a) => a.id == id);
+      setState(() {
+        _parsedData = _parsedData!.copyWith(account: account);
+      });
+    }
+  }
+
+  Future<void> _editToAccount() async {
+    final accounts = ref.read(accountProvider).value ?? [];
+
+    final id = await showSelectSheet<String>(
+      context: context,
+      title: 'Destination Account',
+      subtitle: 'Choose where the money arrives',
+      itemCount: accounts.length,
+      itemBuilder: (context, index) {
+        final acc = accounts[index];
+        final isSelected = acc.id == _parsedData!.toAccount?.id;
+        final stats = ref.read(dashboardStatsProvider);
+        final currency = ref.read(settingsProvider).currency;
+        final balance = stats.accountBalances[acc.id] ?? 0;
+
+        return AccountItem(
+          account: acc,
+          balance: balance,
+          currencySymbol: currency.symbol,
+          isSelected: isSelected,
+          onTap: () => Navigator.pop(context, acc.id),
+          onPrivateToggle: () {
+            final updatedAccount = acc.copyWith(
+              excludeFromTotal: !acc.excludeFromTotal,
+            );
+            ref.read(accountProvider.notifier).updateAccount(updatedAccount);
+          },
+        );
+      },
+    );
+    if (id != null && mounted) {
+      final account = accounts.firstWhere((a) => a.id == id);
+      setState(() {
+        _parsedData = _parsedData!.copyWith(toAccount: account);
+      });
+    }
+  }
+
+  // ═══════════════════════════════════════════════════════
+  // Styling Helpers
+  // ═══════════════════════════════════════════════════════
+
   Color _getTypeColor(BuildContext context, TransactionType type) {
     switch (type) {
       case TransactionType.expense:
@@ -99,28 +231,6 @@ class _VoiceInputSheetState extends ConsumerState<VoiceInputSheet>
         return AppTheme.incomeColor(context);
       case TransactionType.transfer:
         return AppTheme.transferColor(context);
-    }
-  }
-
-  String _typeLabel(TransactionType type) {
-    switch (type) {
-      case TransactionType.expense:
-        return 'Expense';
-      case TransactionType.income:
-        return 'Income';
-      case TransactionType.transfer:
-        return 'Transfer';
-    }
-  }
-
-  IconData _typeIcon(TransactionType type) {
-    switch (type) {
-      case TransactionType.expense:
-        return Icons.arrow_upward_rounded;
-      case TransactionType.income:
-        return Icons.arrow_downward_rounded;
-      case TransactionType.transfer:
-        return Icons.swap_horiz_rounded;
     }
   }
 
@@ -395,12 +505,13 @@ class _VoiceInputSheetState extends ConsumerState<VoiceInputSheet>
               ),
             ),
 
-          // ── Parsed preview ──
-          if (showPreview) ...[_buildPreviewCard(context)],
-
-          // ── Bottom actions ──
+          // ── Preview Details card ──
           if (showPreview) ...[
-            const Gap(20),
+            Flexible(
+              child: SingleChildScrollView(child: _buildPreviewCard(context)),
+            ),
+            const Gap(16),
+            // Actions
             Row(
               children: [
                 // Retry
@@ -527,135 +638,294 @@ class _VoiceInputSheetState extends ConsumerState<VoiceInputSheet>
             context,
             icon: Icons.payments_rounded,
             label: 'Amount',
-            trailing: data.amount != null
-                ? Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text(
-                        '${currency.symbol} ',
-                        style: TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w600,
-                          color: typeColor.withValues(alpha: 0.6),
-                        ),
-                      ),
-                      Text(
-                        data.amount == data.amount!.truncateToDouble()
-                            ? data.amount!.toInt().toString()
-                            : data.amount!.toStringAsFixed(2),
-                        style: TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.w800,
-                          color: typeColor,
-                          letterSpacing: -0.5,
-                        ),
-                      ),
-                    ],
-                  )
-                : Text(
-                    'Not detected',
-                    style: TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w500,
-                      color: AppTheme.textLightColor(
-                        context,
-                      ).withValues(alpha: 0.5),
-                      fontStyle: FontStyle.italic,
-                    ),
-                  ),
-          ),
-          _buildPreviewDivider(context),
-
-          // Type row
-          _buildPreviewRow(
-            context,
-            icon: _typeIcon(data.type),
-            iconColor: typeColor,
-            label: 'Type',
-            trailing: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-              decoration: BoxDecoration(
-                color: typeColor.withValues(alpha: 0.1),
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: Text(
-                _typeLabel(data.type),
-                style: TextStyle(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w700,
-                  color: typeColor,
-                ),
-              ),
-            ),
-          ),
-          _buildPreviewDivider(context),
-
-          // Category row
-          _buildPreviewRow(
-            context,
-            icon: data.category != null
-                ? IconUtils.getIcon(data.category!.iconCodePoint)
-                : Icons.category_rounded,
-            iconColor: data.category?.color,
-            label: 'Category',
-            trailing: data.category != null
-                ? Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Container(
-                        width: 8,
-                        height: 8,
-                        decoration: BoxDecoration(
-                          color: data.category!.color,
-                          shape: BoxShape.circle,
-                        ),
-                      ),
-                      const Gap(8),
-                      Text(
-                        data.category!.name,
-                        style: TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w600,
-                          color: AppTheme.textColor(context),
-                        ),
-                      ),
-                    ],
-                  )
-                : Text(
-                    'Not detected',
-                    style: TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w500,
-                      color: AppTheme.textLightColor(
-                        context,
-                      ).withValues(alpha: 0.5),
-                      fontStyle: FontStyle.italic,
-                    ),
-                  ),
-          ),
-
-          // Note row (only if note is present)
-          if (data.note.isNotEmpty) ...[
-            _buildPreviewDivider(context),
-            _buildPreviewRow(
-              context,
-              icon: Icons.sticky_note_2_rounded,
-              label: 'Note',
-              trailing: Flexible(
-                child: Text(
-                  data.note,
+            trailing: Row(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.baseline,
+              textBaseline: TextBaseline.alphabetic,
+              children: [
+                Text(
+                  currency.symbol,
                   style: TextStyle(
                     fontSize: 14,
                     fontWeight: FontWeight.w600,
-                    color: AppTheme.textColor(context),
+                    color: typeColor.withValues(alpha: 0.6),
                   ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  textAlign: TextAlign.end,
                 ),
+                const Gap(4),
+                SizedBox(
+                  width: 80,
+                  child: TextField(
+                    controller: _amountController,
+                    keyboardType: const TextInputType.numberWithOptions(
+                      decimal: true,
+                    ),
+                    textAlign: TextAlign.left,
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w800,
+                      color: typeColor,
+                      letterSpacing: -0.5,
+                    ),
+                    decoration: InputDecoration(
+                      hintText: '0.00',
+                      hintStyle: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.w800,
+                        color: AppTheme.textLightColor(
+                          context,
+                        ).withValues(alpha: 0.4),
+                      ),
+                      border: InputBorder.none,
+                      enabledBorder: InputBorder.none,
+                      focusedBorder: InputBorder.none,
+                      filled: false,
+                      fillColor: Colors.transparent,
+                      hoverColor: Colors.transparent,
+                      isDense: true,
+                      contentPadding: EdgeInsets.zero,
+                    ),
+                    onChanged: (val) {
+                      final parsed = double.tryParse(val);
+                      if (parsed != null) {
+                        setState(() {
+                          _parsedData = _parsedData!.copyWith(amount: parsed);
+                        });
+                      }
+                    },
+                  ),
+                ),
+              ],
+            ),
+          ),
+          _buildPreviewDivider(context),
+
+          // Type Selector
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 8),
+            child: TransactionTypeSelector(
+              selectedType: data.type,
+              activeColor: typeColor,
+              onChanged: (val) {
+                if (val != data.type) {
+                  setState(() {
+                    _parsedData = _parsedData!.copyWith(
+                      type: val,
+                      category: null,
+                    );
+                  });
+                }
+              },
+            ),
+          ),
+          const Gap(8),
+          _buildPreviewDivider(context),
+
+          // Category row (only if not transfer)
+          if (data.type != TransactionType.transfer) ...[
+            _buildPreviewRow(
+              context,
+              onTap: _editCategory,
+              icon: data.category != null
+                  ? IconUtils.getIcon(data.category!.iconCodePoint)
+                  : Icons.category_rounded,
+              iconColor: data.category?.color,
+              label: 'Category',
+              trailing: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  if (data.category != null) ...[
+                    Container(
+                      width: 8,
+                      height: 8,
+                      decoration: BoxDecoration(
+                        color: data.category!.color,
+                        shape: BoxShape.circle,
+                      ),
+                    ),
+                    const Gap(8),
+                    Text(
+                      data.category!.name,
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                        color: AppTheme.textColor(context),
+                      ),
+                    ),
+                  ] else
+                    Text(
+                      'Not detected',
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w500,
+                        color: AppTheme.textLightColor(
+                          context,
+                        ).withValues(alpha: 0.5),
+                        fontStyle: FontStyle.italic,
+                      ),
+                    ),
+                  const Gap(8),
+                  Icon(
+                    Icons.chevron_right_rounded,
+                    size: 18,
+                    color: AppTheme.textLightColor(
+                      context,
+                    ).withValues(alpha: 0.3),
+                  ),
+                ],
+              ),
+            ),
+            _buildPreviewDivider(context),
+          ],
+
+          // Account row (From Account if transfer)
+          _buildPreviewRow(
+            context,
+            onTap: _editAccount,
+            icon: Icons.account_balance_wallet_rounded,
+            iconColor: data.account?.color,
+            label: data.type == TransactionType.transfer ? 'From' : 'Account',
+            trailing: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                if (data.account != null) ...[
+                  Container(
+                    width: 8,
+                    height: 8,
+                    decoration: BoxDecoration(
+                      color: data.account!.color,
+                      shape: BoxShape.circle,
+                    ),
+                  ),
+                  const Gap(8),
+                  Text(
+                    data.account!.name,
+                    style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                      color: AppTheme.textColor(context),
+                    ),
+                  ),
+                ] else
+                  Text(
+                    'Select Account',
+                    style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w500,
+                      color: AppTheme.textLightColor(
+                        context,
+                      ).withValues(alpha: 0.5),
+                      fontStyle: FontStyle.italic,
+                    ),
+                  ),
+                const Gap(8),
+                Icon(
+                  Icons.chevron_right_rounded,
+                  size: 18,
+                  color: AppTheme.textLightColor(
+                    context,
+                  ).withValues(alpha: 0.3),
+                ),
+              ],
+            ),
+          ),
+
+          // To Account row (Transfer only)
+          if (data.type == TransactionType.transfer) ...[
+            _buildPreviewDivider(context),
+            _buildPreviewRow(
+              context,
+              onTap: _editToAccount,
+              icon: Icons.account_balance_wallet_rounded,
+              iconColor: data.toAccount?.color,
+              label: 'To',
+              trailing: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  if (data.toAccount != null) ...[
+                    Container(
+                      width: 8,
+                      height: 8,
+                      decoration: BoxDecoration(
+                        color: data.toAccount!.color,
+                        shape: BoxShape.circle,
+                      ),
+                    ),
+                    const Gap(8),
+                    Text(
+                      data.toAccount!.name,
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                        color: AppTheme.textColor(context),
+                      ),
+                    ),
+                  ] else
+                    Text(
+                      'Select Target',
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w500,
+                        color: AppTheme.textLightColor(
+                          context,
+                        ).withValues(alpha: 0.5),
+                        fontStyle: FontStyle.italic,
+                      ),
+                    ),
+                  const Gap(8),
+                  Icon(
+                    Icons.chevron_right_rounded,
+                    size: 18,
+                    color: AppTheme.textLightColor(
+                      context,
+                    ).withValues(alpha: 0.3),
+                  ),
+                ],
               ),
             ),
           ],
+          _buildPreviewDivider(context),
+
+          // Note row
+          _buildPreviewRow(
+            context,
+            icon: Icons.sticky_note_2_rounded,
+            label: 'Note',
+            trailing: Flexible(
+              child: TextField(
+                controller: _noteController,
+                textAlign: TextAlign.end,
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                  color: AppTheme.textColor(context),
+                ),
+                decoration: InputDecoration(
+                  hintText: 'Add note...',
+                  hintStyle: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w500,
+                    color: AppTheme.textLightColor(
+                      context,
+                    ).withValues(alpha: 0.5),
+                    fontStyle: FontStyle.italic,
+                  ),
+                  border: InputBorder.none,
+                  enabledBorder: InputBorder.none,
+                  focusedBorder: InputBorder.none,
+                  filled: false,
+                  fillColor: Colors.transparent,
+                  hoverColor: Colors.transparent,
+                  isDense: true,
+                  contentPadding: EdgeInsets.zero,
+                ),
+                onChanged: (val) {
+                  setState(() {
+                    _parsedData = _parsedData!.copyWith(note: val);
+                  });
+                },
+              ),
+            ),
+          ),
         ],
       ),
     ).animate().fadeIn(duration: 300.ms).slideY(begin: 0.05, end: 0);
@@ -667,38 +937,45 @@ class _VoiceInputSheetState extends ConsumerState<VoiceInputSheet>
     Color? iconColor,
     required String label,
     required Widget trailing,
+    VoidCallback? onTap,
   }) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 10),
-      child: Row(
-        children: [
-          Container(
-            width: 32,
-            height: 32,
-            decoration: BoxDecoration(
-              color: (iconColor ?? AppTheme.textLightColor(context)).withValues(
-                alpha: 0.1,
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(12),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 10),
+          child: Row(
+            children: [
+              Container(
+                width: 32,
+                height: 32,
+                decoration: BoxDecoration(
+                  color: (iconColor ?? AppTheme.textLightColor(context))
+                      .withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(9),
+                ),
+                child: Icon(
+                  icon,
+                  size: 16,
+                  color: iconColor ?? AppTheme.textLightColor(context),
+                ),
               ),
-              borderRadius: BorderRadius.circular(9),
-            ),
-            child: Icon(
-              icon,
-              size: 16,
-              color: iconColor ?? AppTheme.textLightColor(context),
-            ),
+              const Gap(12),
+              Text(
+                label,
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w500,
+                  color: AppTheme.textLightColor(context),
+                ),
+              ),
+              const Spacer(),
+              trailing,
+            ],
           ),
-          const Gap(12),
-          Text(
-            label,
-            style: TextStyle(
-              fontSize: 14,
-              fontWeight: FontWeight.w500,
-              color: AppTheme.textLightColor(context),
-            ),
-          ),
-          const Spacer(),
-          trailing,
-        ],
+        ),
       ),
     );
   }
