@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:koin/core/providers/navigation_provider.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:koin/core/theme.dart';
 import 'package:koin/core/utils/haptic_utils.dart';
@@ -8,14 +10,14 @@ import 'package:koin/features/reports/custom_reports_screen.dart';
 import 'package:koin/core/utils/slide_up_route.dart';
 import 'package:koin/core/widgets/koin_segmented_control.dart';
 
-class ActivityScreen extends StatefulWidget {
+class ActivityScreen extends ConsumerStatefulWidget {
   const ActivityScreen({super.key});
 
   @override
-  State<ActivityScreen> createState() => _ActivityScreenState();
+  ConsumerState<ActivityScreen> createState() => _ActivityScreenState();
 }
 
-class _ActivityScreenState extends State<ActivityScreen>
+class _ActivityScreenState extends ConsumerState<ActivityScreen>
     with SingleTickerProviderStateMixin {
   late TabController _tabController;
 
@@ -27,6 +29,7 @@ class _ActivityScreenState extends State<ActivityScreen>
       if (!_tabController.indexIsChanging) {
         HapticService.selection();
       }
+      ref.read(activityTabProvider.notifier).setIndex(_tabController.index);
     });
   }
 
@@ -38,6 +41,12 @@ class _ActivityScreenState extends State<ActivityScreen>
 
   @override
   Widget build(BuildContext context) {
+    ref.listen<int>(activityTabProvider, (previous, next) {
+      if (_tabController.index != next) {
+        _tabController.animateTo(next);
+      }
+    });
+
     return SafeArea(
       bottom: false,
       child: Column(

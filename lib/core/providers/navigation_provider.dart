@@ -19,3 +19,16 @@ final pageControllerProvider = Provider<PageController>((ref) {
   ref.onDispose(() => controller.dispose());
   return controller;
 });
+
+class ActivityTabNotifier extends Notifier<int> {
+  @override
+  int build() => 0;
+
+  void setIndex(int index) {
+    state = index;
+  }
+}
+
+final activityTabProvider = NotifierProvider<ActivityTabNotifier, int>(() {
+  return ActivityTabNotifier();
+});

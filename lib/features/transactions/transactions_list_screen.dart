@@ -259,7 +259,13 @@ class TransactionsListScreen extends ConsumerWidget {
                                     ),
                                     if (dailyTotal != 0)
                                       AnimatedCounter(
+                                        key: ValueKey('total_$dateKey'),
                                         value: dailyTotal.abs(),
+                                        animateFromZero:
+                                            !AnimationTracker.isSeen(
+                                              'day_$dateKey',
+                                            ),
+                                        lastValueToken: 'total_$dateKey',
                                         formatter: (v) {
                                           String fmtBalance =
                                               NumberFormat.currency(

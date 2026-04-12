@@ -1,5 +1,6 @@
 import 'dart:math';
 import 'package:flutter/material.dart';
+import 'package:koin/core/utils/animation_utils.dart';
 
 /// A premium animated counter that rolls individual digits up/down
 /// like a mechanical odometer. Each digit independently transitions
@@ -12,6 +13,8 @@ class AnimatedCounter extends StatefulWidget {
   final Curve curve;
   final int? maxLines;
   final TextOverflow? overflow;
+  final bool animateFromZero;
+  final String? lastValueToken;
 
   const AnimatedCounter({
     super.key,
@@ -22,6 +25,8 @@ class AnimatedCounter extends StatefulWidget {
     this.curve = Curves.easeOutCubic,
     this.maxLines,
     this.overflow,
+    this.animateFromZero = true,
+    this.lastValueToken,
   });
 
   @override
@@ -33,7 +38,17 @@ class _AnimatedCounterState extends State<AnimatedCounter> {
 
   @override
   Widget build(BuildContext context) {
-    final beginValue = _oldValue ?? 0.0;
+    double? trackerValue;
+    if (widget.lastValueToken != null) {
+      trackerValue = AnimationTracker.getValue(widget.lastValueToken!);
+      // Update the value in tracker for next time
+      AnimationTracker.updateValue(widget.lastValueToken!, widget.value);
+    }
+
+    final beginValue =
+        _oldValue ??
+        trackerValue ??
+        (widget.animateFromZero ? 0.0 : widget.value);
     _oldValue = widget.value;
 
     return TweenAnimationBuilder<double>(

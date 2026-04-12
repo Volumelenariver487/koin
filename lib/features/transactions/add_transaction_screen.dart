@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:koin/core/utils/slide_up_route.dart';
-import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:gap/gap.dart';
 import 'package:intl/intl.dart';
@@ -19,10 +18,13 @@ import 'package:koin/core/widgets/numpad.dart';
 import 'package:koin/features/categories/category_manager_screen.dart';
 import 'package:koin/core/utils/haptic_utils.dart';
 import 'package:koin/core/utils/snackbar_utils.dart';
+import 'package:koin/core/widgets/transaction_type_selector.dart';
 import 'package:koin/core/widgets/koin_back_button.dart';
 import 'package:koin/core/widgets/pressable_scale.dart';
 import 'package:koin/core/utils/voice_command_parser.dart';
 import 'package:koin/features/transactions/widgets/voice_input_sheet.dart';
+import 'package:koin/core/widgets/select_sheet.dart';
+import 'package:koin/core/widgets/account_item.dart';
 
 class AddTransactionScreen extends ConsumerStatefulWidget {
   final AppTransaction? editingTransaction;
@@ -203,11 +205,15 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen>
           }
           _currentExpression = _amountController.text;
         }
-        if (result.type != TransactionType.transfer) {
-          _selectedType = result.type;
-        }
+        _selectedType = result.type;
         if (result.category != null) {
           _selectedCategoryId = result.category!.id;
+        }
+        if (result.account != null) {
+          _selectedAccountId = result.account!.id;
+        }
+        if (result.toAccount != null) {
+          _selectedToAccountId = result.toAccount!.id;
         }
         if (result.note.isNotEmpty) {
           _noteController.text = result.note;
@@ -324,17 +330,6 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen>
     _prevColor = oldColor;
     _currentColor = _getTypeColor(context);
     _colorAnimController.forward(from: 0);
-  }
-
-  int get _typeIndex {
-    switch (_selectedType) {
-      case TransactionType.expense:
-        return 0;
-      case TransactionType.income:
-        return 1;
-      case TransactionType.transfer:
-        return 2;
-    }
   }
 
   TransactionCategory? _categoryById(
@@ -609,104 +604,10 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen>
   // ═══════════════════════════════════════════════════════
   Widget _buildTypeSelector(BuildContext context, Color activeColor) {
     final categories = ref.read(categoriesProvider).value ?? [];
-    final types = [
-      (
-        'Expense',
-        TransactionType.expense,
-        AppTheme.expenseColor(context),
-        Icons.arrow_upward_rounded,
-      ),
-      (
-        'Income',
-        TransactionType.income,
-        AppTheme.incomeColor(context),
-        Icons.arrow_downward_rounded,
-      ),
-      (
-        'Transfer',
-        TransactionType.transfer,
-        AppTheme.transferColor(context),
-        Icons.swap_horiz_rounded,
-      ),
-    ];
-
-    return Container(
-      padding: const EdgeInsets.all(4),
-      decoration: BoxDecoration(
-        color: AppTheme.surfaceColor(context).withValues(alpha: 0.75),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-          color: AppTheme.dividerColor(context).withValues(alpha: 0.6),
-        ),
-      ),
-      child: LayoutBuilder(
-        builder: (context, constraints) {
-          final tabWidth = constraints.maxWidth / 3;
-          return Stack(
-            children: [
-              AnimatedPositioned(
-                duration: const Duration(milliseconds: 300),
-                curve: Curves.easeOutCubic,
-                left: _typeIndex * tabWidth,
-                top: 0,
-                bottom: 0,
-                width: tabWidth,
-                child: Container(
-                  decoration: BoxDecoration(
-                    color: activeColor,
-                    borderRadius: BorderRadius.circular(12),
-                    boxShadow: [
-                      BoxShadow(
-                        color: activeColor.withValues(alpha: 0.35),
-                        blurRadius: 14,
-                        offset: const Offset(0, 4),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-              Row(
-                children: types.map((t) {
-                  final isSelected = _selectedType == t.$2;
-                  return Expanded(
-                    child: GestureDetector(
-                      onTap: () => _onTypeChanged(t.$2, categories),
-                      behavior: HitTestBehavior.opaque,
-                      child: AnimatedContainer(
-                        duration: const Duration(milliseconds: 250),
-                        padding: const EdgeInsets.symmetric(vertical: 13),
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Icon(
-                              t.$4,
-                              size: 15,
-                              color: isSelected
-                                  ? Colors.white
-                                  : AppTheme.textLightColor(context),
-                            ),
-                            const Gap(5),
-                            Text(
-                              t.$1,
-                              style: TextStyle(
-                                color: isSelected
-                                    ? Colors.white
-                                    : AppTheme.textLightColor(context),
-                                fontWeight: FontWeight.w700,
-                                fontSize: 13,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  );
-                }).toList(),
-              ),
-            ],
-          );
-        },
-      ),
+    return TransactionTypeSelector(
+      selectedType: _selectedType,
+      activeColor: activeColor,
+      onChanged: (val) => _onTypeChanged(val, categories),
     );
   }
 
@@ -1223,14 +1124,14 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen>
         .where((c) => c.type == _selectedType)
         .toList();
 
-    final id = await _showPremiumSelectionSheet<String>(
+    final id = await showSelectSheet<String>(
       context: context,
       title: 'Category',
       subtitle: 'Choose a category for this transaction',
       itemCount: filteredCategories.length,
       itemBuilder: (context, index) {
         final cat = filteredCategories[index];
-        return _PremiumSheetItem(
+        return SelectSheetItem(
           name: cat.name,
           accentColor: cat.color,
           iconCodePoint: cat.iconCodePoint,
@@ -1258,7 +1159,7 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen>
     final filtered = excludeAccountId == null
         ? accounts
         : accounts.where((a) => a.id != excludeAccountId).toList();
-    final id = await _showPremiumSelectionSheet<String>(
+    final id = await showSelectSheet<String>(
       context: context,
       title: title,
       subtitle: subtitle,
@@ -1273,14 +1174,13 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen>
               orElse: () => filtered[index],
             );
             final balance = accountBalances?[acc.id];
-            return _PremiumSheetItem(
-              name: acc.name,
-              accentColor: acc.color,
-              iconCodePoint: acc.iconCodePoint,
-              selected: acc.id == selectedId,
-              balance: balance,
-              isPrivate: acc.excludeFromTotal,
-              currencySymbol: currencySymbol,
+            final isSelected = acc.id == selectedId;
+
+            return AccountItem(
+              account: acc,
+              balance: balance ?? 0,
+              currencySymbol: currencySymbol ?? '',
+              isSelected: isSelected,
               onTap: () => Navigator.pop(context, acc.id),
               onPrivateToggle: () {
                 final updatedAccount = acc.copyWith(
@@ -1298,338 +1198,5 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen>
     if (id != null && mounted) {
       onSelected(id);
     }
-  }
-
-  Future<T?> _showPremiumSelectionSheet<T>({
-    required BuildContext context,
-    required String title,
-    required String subtitle,
-    required int itemCount,
-    required Widget Function(BuildContext context, int index) itemBuilder,
-    String? emptyMessage,
-  }) {
-    final bottomInset = MediaQuery.of(context).padding.bottom;
-    final maxHeight = MediaQuery.sizeOf(context).height * 0.62;
-
-    return showModalBottomSheet<T>(
-      context: context,
-      backgroundColor: Colors.transparent,
-      barrierColor: Colors.black.withValues(alpha: 0.45),
-      isScrollControlled: true,
-      builder: (sheetContext) {
-        return Padding(
-          padding: EdgeInsets.only(
-            top: MediaQuery.of(sheetContext).padding.top + 12,
-          ),
-          child: Align(
-            alignment: Alignment.bottomCenter,
-            child: ClipRRect(
-              borderRadius: const BorderRadius.vertical(
-                top: Radius.circular(24),
-              ),
-              child: Container(
-                constraints: BoxConstraints(maxHeight: maxHeight),
-                decoration: BoxDecoration(
-                  color: AppTheme.surfaceColor(sheetContext),
-                  border: Border.all(
-                    color: AppTheme.dividerColor(sheetContext),
-                  ),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withValues(alpha: 0.12),
-                      blurRadius: 32,
-                      offset: const Offset(0, -8),
-                    ),
-                  ],
-                ),
-                child: Column(
-                  mainAxisSize: MainAxisSize.max,
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    const Gap(10),
-                    Center(
-                      child: Container(
-                        width: 40,
-                        height: 4,
-                        decoration: BoxDecoration(
-                          color: AppTheme.dividerColor(sheetContext),
-                          borderRadius: BorderRadius.circular(2),
-                        ),
-                      ),
-                    ),
-                    Padding(
-                      padding: const EdgeInsets.fromLTRB(22, 20, 22, 8),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            title,
-                            style: TextStyle(
-                              fontSize: 22,
-                              fontWeight: FontWeight.w800,
-                              letterSpacing: -0.6,
-                              color: AppTheme.textColor(sheetContext),
-                            ),
-                          ),
-                          const Gap(4),
-                          Text(
-                            subtitle,
-                            style: TextStyle(
-                              fontSize: 14,
-                              fontWeight: FontWeight.w500,
-                              height: 1.35,
-                              color: AppTheme.textLightColor(sheetContext),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    if (emptyMessage != null)
-                      Padding(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 22,
-                          vertical: 24,
-                        ),
-                        child: Text(
-                          emptyMessage,
-                          textAlign: TextAlign.center,
-                          style: TextStyle(
-                            fontSize: 15,
-                            color: AppTheme.textLightColor(sheetContext),
-                          ),
-                        ),
-                      )
-                    else
-                      Expanded(
-                        child: ListView.separated(
-                          padding: EdgeInsets.fromLTRB(
-                            16,
-                            8,
-                            16,
-                            16 + bottomInset,
-                          ),
-                          itemCount: itemCount,
-                          separatorBuilder: (context, index) => const Gap(8),
-                          itemBuilder: (context, index) {
-                            return itemBuilder(context, index)
-                                .animate()
-                                .fadeIn(
-                                  delay: (index * 40).ms,
-                                  duration: 250.ms,
-                                )
-                                .slideX(
-                                  begin: 0.04,
-                                  duration: 250.ms,
-                                  curve: Curves.easeOutCubic,
-                                );
-                          },
-                        ),
-                      ),
-                  ],
-                ),
-              ),
-            ),
-          ),
-        );
-      },
-    );
-  }
-}
-
-// ═══════════════════════════════════════════════════════
-// Premium Sheet Item
-// ═══════════════════════════════════════════════════════
-class _PremiumSheetItem extends StatelessWidget {
-  const _PremiumSheetItem({
-    required this.name,
-    required this.accentColor,
-    required this.iconCodePoint,
-    required this.selected,
-    required this.onTap,
-    this.balance,
-    this.isPrivate = false,
-    this.currencySymbol,
-    this.onPrivateToggle,
-  });
-
-  final String name;
-  final Color accentColor;
-  final int iconCodePoint;
-  final bool selected;
-  final VoidCallback onTap;
-  final double? balance;
-  final bool isPrivate;
-  final String? currencySymbol;
-  final VoidCallback? onPrivateToggle;
-
-  @override
-  Widget build(BuildContext context) {
-    final primary = AppTheme.primaryColor(context);
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        onTap: () {
-          HapticService.selection();
-          onTap();
-        },
-        borderRadius: BorderRadius.circular(20),
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 200),
-          curve: Curves.easeOutCubic,
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(20),
-            border: Border.all(
-              color: selected
-                  ? primary.withValues(alpha: 0.4)
-                  : AppTheme.dividerColor(context).withValues(alpha: 0.3),
-              width: selected ? 1.5 : 1,
-            ),
-            color: selected
-                ? primary.withValues(alpha: 0.08)
-                : AppTheme.surfaceColor(context),
-            boxShadow: selected
-                ? [
-                    BoxShadow(
-                      color: primary.withValues(alpha: 0.1),
-                      blurRadius: 12,
-                      offset: const Offset(0, 4),
-                    ),
-                  ]
-                : [
-                    BoxShadow(
-                      color: Colors.black.withValues(alpha: 0.02),
-                      blurRadius: 10,
-                      offset: const Offset(0, 4),
-                    ),
-                  ],
-          ),
-          child: Row(
-            children: [
-              // ── Account Icon ──
-              Container(
-                width: 44,
-                height: 44,
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                    colors: [
-                      accentColor.withValues(alpha: 0.15),
-                      accentColor.withValues(alpha: 0.06),
-                    ],
-                  ),
-                  borderRadius: BorderRadius.circular(13),
-                ),
-                child: Center(
-                  child: Icon(
-                    IconUtils.getIcon(iconCodePoint),
-                    color: accentColor,
-                    size: 22,
-                  ),
-                ),
-              ),
-              const Gap(14),
-
-              // ── Name + Balance (two lines) ──
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      name,
-                      style: TextStyle(
-                        fontSize: 15,
-                        fontWeight: FontWeight.w600,
-                        letterSpacing: -0.2,
-                        color: AppTheme.textColor(context),
-                      ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    if (balance != null) ...[
-                      const Gap(3),
-                      isPrivate
-                          ? Text(
-                              '••••••',
-                              style: TextStyle(
-                                color: AppTheme.textLightColor(
-                                  context,
-                                ).withValues(alpha: 0.45),
-                                fontWeight: FontWeight.w800,
-                                fontSize: 13,
-                                letterSpacing: 2,
-                              ),
-                            )
-                          : Text(
-                              NumberFormat.currency(
-                                symbol: currencySymbol ?? '',
-                              ).format(balance),
-                              style: TextStyle(
-                                fontSize: 13,
-                                fontWeight: FontWeight.w500,
-                                color: AppTheme.textLightColor(context),
-                              ),
-                            ),
-                    ],
-                  ],
-                ),
-              ),
-
-              // ── Privacy Toggle ──
-              if (onPrivateToggle != null) ...[
-                GestureDetector(
-                  onTap: () {
-                    HapticService.selection();
-                    onPrivateToggle!();
-                  },
-                  child: Padding(
-                    padding: const EdgeInsets.all(6),
-                    child: Icon(
-                      isPrivate
-                          ? Icons.visibility_off_rounded
-                          : Icons.visibility_rounded,
-                      size: 18,
-                      color: isPrivate
-                          ? AppTheme.textLightColor(
-                              context,
-                            ).withValues(alpha: 0.35)
-                          : AppTheme.primaryColor(
-                              context,
-                            ).withValues(alpha: 0.55),
-                    ),
-                  ),
-                ),
-              ],
-
-              // ── Selection Indicator ──
-              const Gap(8),
-              if (selected)
-                Icon(Icons.check_circle_rounded, color: primary, size: 24)
-              else
-                SizedBox(
-                  width: 24,
-                  height: 24,
-                  child: Center(
-                    child: Container(
-                      width: 8,
-                      height: 8,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        border: Border.all(
-                          color: AppTheme.textLightColor(
-                            context,
-                          ).withValues(alpha: 0.2),
-                          width: 1.5,
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-            ],
-          ),
-        ),
-      ),
-    );
   }
 }

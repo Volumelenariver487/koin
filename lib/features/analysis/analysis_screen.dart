@@ -16,6 +16,8 @@ import 'package:koin/core/utils/haptic_utils.dart';
 import 'package:koin/core/widgets/pressable_scale.dart';
 import 'package:koin/core/widgets/animated_counter.dart';
 import 'package:koin/core/widgets/spending_trend_chart.dart';
+import 'package:koin/core/providers/navigation_provider.dart';
+import 'package:koin/core/models/transaction_filter.dart';
 import 'dart:ui';
 import 'dart:math' show pi;
 
@@ -210,6 +212,7 @@ class _AnalysisScreenState extends ConsumerState<AnalysisScreen> {
                         const Gap(16),
                         _buildTopCategoriesList(
                           context,
+                          ref,
                           filteredTransactions,
                           categories,
                           currency,
@@ -889,6 +892,7 @@ class _AnalysisScreenState extends ConsumerState<AnalysisScreen> {
 
   Widget _buildTopCategoriesList(
     BuildContext context,
+    WidgetRef ref,
     List<AppTransaction> expenses,
     List<TransactionCategory> categories,
     Currency currency,
@@ -922,8 +926,12 @@ class _AnalysisScreenState extends ConsumerState<AnalysisScreen> {
 
         return PressableScale(
           onTap: () {
-            // Future: Navigate to category detail analysis
             HapticService.light();
+            ref
+                .read(transactionFilterProvider.notifier)
+                .updateFilter(TransactionFilter(categoryIds: {category.id}));
+            ref.read(navigationProvider.notifier).setIndex(1);
+            ref.read(activityTabProvider.notifier).setIndex(1);
           },
           child: Container(
             margin: const EdgeInsets.only(bottom: 12),
