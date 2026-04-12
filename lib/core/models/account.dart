@@ -11,6 +11,7 @@ class Account {
   final String? cardColorHex;
 
   final int position;
+  final int? cardShapeType;
 
   Account({
     required this.id,
@@ -22,6 +23,7 @@ class Account {
     this.position = 0,
     this.logoAsset,
     this.cardColorHex,
+    this.cardShapeType,
   });
 
   Account copyWith({
@@ -34,6 +36,7 @@ class Account {
     int? position,
     String? Function()? logoAsset,
     String? Function()? cardColorHex,
+    int? Function()? cardShapeType,
   }) {
     return Account(
       id: id ?? this.id,
@@ -45,6 +48,9 @@ class Account {
       position: position ?? this.position,
       logoAsset: logoAsset != null ? logoAsset() : this.logoAsset,
       cardColorHex: cardColorHex != null ? cardColorHex() : this.cardColorHex,
+      cardShapeType: cardShapeType != null
+          ? cardShapeType()
+          : this.cardShapeType,
     );
   }
 
@@ -59,6 +65,7 @@ class Account {
       'position': position,
       'logoAsset': logoAsset,
       'cardColorHex': cardColorHex,
+      'cardShapeType': cardShapeType,
     };
   }
 
@@ -73,6 +80,7 @@ class Account {
       position: map['position'] ?? 0,
       logoAsset: map['logoAsset'],
       cardColorHex: map['cardColorHex'],
+      cardShapeType: map['cardShapeType'],
     );
   }
 

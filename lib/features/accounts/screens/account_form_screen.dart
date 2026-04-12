@@ -11,6 +11,8 @@ import 'package:koin/core/widgets/koin_back_button.dart';
 import 'package:koin/core/utils/haptic_utils.dart';
 import 'package:koin/core/widgets/account_item.dart';
 import 'package:koin/core/providers/settings_provider.dart';
+import 'package:koin/core/utils/icon_utils.dart';
+import 'package:koin/core/widgets/card_background_shapes.dart';
 
 class AccountFormScreen extends ConsumerStatefulWidget {
   final Account? account;
@@ -34,7 +36,9 @@ class _AccountFormScreenState extends ConsumerState<AccountFormScreen> {
   final ScrollController _iconScrollController = ScrollController();
   final ScrollController _colorScrollController = ScrollController();
   final ScrollController _cardColorScrollController = ScrollController();
+  final ScrollController _cardShapeScrollController = ScrollController();
   final ScrollController _templateScrollController = ScrollController();
+  int? selectedCardShape;
 
   final List<IconData> icons = [
     Icons.account_balance_wallet_rounded,
@@ -74,6 +78,7 @@ class _AccountFormScreenState extends ConsumerState<AccountFormScreen> {
     excludeFromTotal = widget.account?.excludeFromTotal ?? false;
     selectedLogoAsset = widget.account?.logoAsset;
     selectedCardColor = widget.account?.cardColor;
+    selectedCardShape = widget.account?.cardShapeType;
 
     // Find matching template for existing account
     if (widget.account?.logoAsset != null) {
@@ -212,6 +217,7 @@ class _AccountFormScreenState extends ConsumerState<AccountFormScreen> {
     _iconScrollController.dispose();
     _colorScrollController.dispose();
     _cardColorScrollController.dispose();
+    _cardShapeScrollController.dispose();
     _templateScrollController.dispose();
     super.dispose();
   }
@@ -254,6 +260,7 @@ class _AccountFormScreenState extends ConsumerState<AccountFormScreen> {
             : ref.read(accountProvider).value?.length ?? 0,
         logoAsset: selectedLogoAsset,
         cardColorHex: cardHex,
+        cardShapeType: selectedCardShape,
       );
 
       if (isEditing) {
@@ -268,59 +275,270 @@ class _AccountFormScreenState extends ConsumerState<AccountFormScreen> {
     }
   }
 
-  Widget _buildPremiumTextField({
-    required TextEditingController controller,
-    required String label,
-    required IconData icon,
-    TextInputType? keyboardType,
-    TextCapitalization textCapitalization = TextCapitalization.none,
-    bool enabled = true,
-  }) {
-    return Opacity(
-      opacity: enabled ? 1.0 : 0.5,
-      child: Container(
-        decoration: BoxDecoration(
-          color: AppTheme.surfaceColor(context),
-          borderRadius: BorderRadius.circular(16),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.02),
-              blurRadius: 8,
-              offset: const Offset(0, 2),
-            ),
+  /// Whether the preview card has a coloured (non-default) background.
+  bool get _previewHasColoredBackground =>
+      selectedCardColor != null || selectedLogoAsset != null;
+
+  BoxDecoration _previewCardDecoration(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    if (_previewHasColoredBackground) {
+      final baseColor = selectedCardColor ?? selectedColor;
+      return BoxDecoration(
+        borderRadius: BorderRadius.circular(24),
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            baseColor.withValues(alpha: 0.95),
+            baseColor.withValues(alpha: 0.8),
           ],
-          border: Border.all(
-            color: AppTheme.dividerColor(context).withValues(alpha: 0.4),
-          ),
+          stops: const [0.2, 1.0],
         ),
-        child: TextField(
-          controller: controller,
-          enabled: enabled,
-          keyboardType: keyboardType,
-          textCapitalization: textCapitalization,
-          style: TextStyle(
-            fontWeight: FontWeight.w600,
-            color: AppTheme.textColor(context),
+        boxShadow: [
+          BoxShadow(
+            color: baseColor.withValues(alpha: 0.3),
+            blurRadius: 24,
+            offset: const Offset(0, 8),
           ),
-          decoration: InputDecoration(
-            labelText: label,
-            labelStyle: TextStyle(
-              color: AppTheme.textLightColor(context).withValues(alpha: 0.8),
-              fontWeight: FontWeight.w500,
-            ),
-            prefixIcon: Icon(
-              icon,
-              color: AppTheme.textLightColor(context).withValues(alpha: 0.6),
-            ),
-            border: InputBorder.none,
-            enabledBorder: InputBorder.none,
-            focusedBorder: InputBorder.none,
-            contentPadding: const EdgeInsets.symmetric(
-              horizontal: 16,
-              vertical: 16,
-            ),
+          BoxShadow(
+            color: baseColor.withValues(alpha: 0.15),
+            blurRadius: 8,
+            offset: const Offset(0, 4),
           ),
+        ],
+        border: Border.all(
+          color: Colors.white.withValues(alpha: 0.15),
+          width: 0.5,
         ),
+      );
+    }
+
+    final surfaceColor = AppTheme.surfaceColor(context);
+    return BoxDecoration(
+      color: surfaceColor,
+      borderRadius: BorderRadius.circular(24),
+      border: Border.all(
+        color: isDark
+            ? Colors.white.withValues(alpha: 0.08)
+            : AppTheme.dividerColor(context).withValues(alpha: 0.6),
+        width: 1.2,
+      ),
+      boxShadow: [
+        BoxShadow(
+          color: isDark
+              ? Colors.black.withValues(alpha: 0.3)
+              : Colors.black.withValues(alpha: 0.03),
+          blurRadius: 16,
+          offset: const Offset(0, 6),
+        ),
+      ],
+    );
+  }
+
+  List<Widget> _previewBackgroundShapes() {
+    if (!_previewHasColoredBackground) return const [];
+
+    final shapeType =
+        selectedCardShape ?? (widget.account?.id.hashCode.abs() ?? 0) % 4;
+    // AccountItem uses multiplier 3.0 for isPreview = true
+    const opacityMultiplier = 3.0;
+
+    return [
+      Positioned.fill(
+        child: CardBackgroundShapes(
+          shapeType: shapeType,
+          opacityMultiplier: opacityMultiplier,
+        ),
+      ),
+    ];
+  }
+
+  Widget _buildInteractivePreview(
+    BuildContext context,
+    List<Color> colors,
+    dynamic currency,
+  ) {
+    final colored = _previewHasColoredBackground;
+    final nameEnabled = selectedTemplateId == null;
+
+    // Adaptive colors based on card background
+    final primaryTextColor = colored
+        ? Colors.white
+        : AppTheme.textColor(context);
+    final secondaryTextColor = colored
+        ? Colors.white.withValues(alpha: 0.85)
+        : AppTheme.textLightColor(context);
+    final hintColor = colored
+        ? Colors.white.withValues(alpha: 0.5)
+        : AppTheme.textLightColor(context).withValues(alpha: 0.5);
+    final cursorColor = colored ? Colors.white : AppTheme.primaryColor(context);
+
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 300),
+      curve: Curves.easeOutCubic,
+      decoration: _previewCardDecoration(context),
+      clipBehavior: Clip.antiAlias,
+      child: Stack(
+        children: [
+          ..._previewBackgroundShapes(),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+            child: Row(
+              children: [
+                // Account Icon / Logo
+                Container(
+                  width: 48,
+                  height: 48,
+                  decoration: BoxDecoration(
+                    color: selectedLogoAsset == null
+                        ? (colored
+                              ? Colors.white.withValues(alpha: 0.15)
+                              : selectedColor.withValues(alpha: 0.1))
+                        : null,
+                    border: selectedLogoAsset == null
+                        ? Border.all(
+                            color: colored
+                                ? Colors.white.withValues(alpha: 0.25)
+                                : selectedColor.withValues(alpha: 0.15),
+                            width: 1,
+                          )
+                        : null,
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  child: selectedLogoAsset != null
+                      ? ClipRRect(
+                          borderRadius: BorderRadius.circular(16),
+                          child: Image.asset(
+                            selectedLogoAsset!,
+                            fit: BoxFit.cover,
+                          ),
+                        )
+                      : Center(
+                          child: Icon(
+                            IconUtils.getIcon(selectedIcon),
+                            color: colored ? Colors.white : selectedColor,
+                            size: 24,
+                          ),
+                        ),
+                ),
+                const Gap(16),
+
+                // Name + Balance column
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      // Inline name field
+                      Theme(
+                        data: Theme.of(context).copyWith(
+                          inputDecorationTheme: const InputDecorationTheme(
+                            border: InputBorder.none,
+                            focusedBorder: InputBorder.none,
+                            enabledBorder: InputBorder.none,
+                            disabledBorder: InputBorder.none,
+                            contentPadding: EdgeInsets.zero,
+                            isDense: true,
+                            isCollapsed: true,
+                          ),
+                        ),
+                        child: TextField(
+                          controller: nameController,
+                          enabled: nameEnabled,
+                          textCapitalization: TextCapitalization.words,
+                          style: TextStyle(
+                            color: secondaryTextColor,
+                            fontWeight: FontWeight.w600,
+                            fontSize: 13,
+                            letterSpacing: -0.1,
+                          ),
+                          cursorColor: cursorColor,
+                          cursorHeight: 14,
+                          decoration: InputDecoration(
+                            hintText: 'Account Name',
+                            hintStyle: TextStyle(
+                              color: hintColor,
+                              fontWeight: FontWeight.w600,
+                              fontSize: 13,
+                            ),
+                            border: InputBorder.none,
+                            enabledBorder: InputBorder.none,
+                            focusedBorder: InputBorder.none,
+                            disabledBorder: InputBorder.none,
+                            contentPadding: EdgeInsets.zero,
+                            isDense: true,
+                            isCollapsed: true,
+                          ),
+                        ),
+                      ),
+                      const Gap(2),
+                      // Inline balance field
+                      Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            currency.symbol,
+                            style: TextStyle(
+                              color: primaryTextColor,
+                              fontWeight: FontWeight.w700,
+                              fontSize: 18,
+                              letterSpacing: -0.5,
+                            ),
+                          ),
+                          Flexible(
+                            child: Theme(
+                              data: Theme.of(context).copyWith(
+                                inputDecorationTheme:
+                                    const InputDecorationTheme(
+                                      border: InputBorder.none,
+                                      focusedBorder: InputBorder.none,
+                                      enabledBorder: InputBorder.none,
+                                      contentPadding: EdgeInsets.zero,
+                                      isDense: true,
+                                      isCollapsed: true,
+                                    ),
+                              ),
+                              child: TextField(
+                                controller: balanceController,
+                                keyboardType:
+                                    const TextInputType.numberWithOptions(
+                                      decimal: true,
+                                    ),
+                                style: TextStyle(
+                                  color: primaryTextColor,
+                                  fontWeight: FontWeight.w700,
+                                  fontSize: 18,
+                                  letterSpacing: -0.5,
+                                ),
+                                cursorColor: cursorColor,
+                                cursorHeight: 18,
+                                decoration: InputDecoration(
+                                  hintText: '0.00',
+                                  hintStyle: TextStyle(
+                                    color: hintColor,
+                                    fontWeight: FontWeight.w700,
+                                    fontSize: 18,
+                                  ),
+                                  border: InputBorder.none,
+                                  enabledBorder: InputBorder.none,
+                                  focusedBorder: InputBorder.none,
+                                  contentPadding: EdgeInsets.zero,
+                                  isDense: true,
+                                  isCollapsed: true,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -352,51 +570,8 @@ class _AccountFormScreenState extends ConsumerState<AccountFormScreen> {
         padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
         child: Column(
           children: [
-            // ── Live Preview ──
-            Row(
-              children: [
-                Icon(
-                  Icons.visibility_rounded,
-                  size: 16,
-                  color: AppTheme.primaryColor(context).withValues(alpha: 0.7),
-                ),
-                const Gap(6),
-                Text(
-                  'Preview',
-                  style: TextStyle(
-                    color: AppTheme.textLightColor(
-                      context,
-                    ).withValues(alpha: 0.7),
-                    fontSize: 13,
-                    fontWeight: FontWeight.w600,
-                    letterSpacing: 0.3,
-                  ),
-                ),
-              ],
-            ),
-            const Gap(12),
-            IgnorePointer(
-              child: AccountItem(
-                account: Account(
-                  id: 'preview',
-                  name: nameController.text.isEmpty
-                      ? 'Account Name'
-                      : nameController.text,
-                  iconCodePoint: selectedIcon,
-                  colorHex:
-                      '#${selectedColor.toARGB32().toRadixString(16).padLeft(8, '0').substring(2)}',
-                  excludeFromTotal: excludeFromTotal,
-                  logoAsset: selectedLogoAsset,
-                  cardColorHex: selectedCardColor == null
-                      ? null
-                      : '#${selectedCardColor!.toARGB32().toRadixString(16).padLeft(8, '0').substring(2)}',
-                ),
-                balance: double.tryParse(balanceController.text) ?? 0.0,
-                currencySymbol: currency.symbol,
-                onTap: () {},
-                // Disable private toggle interaction in preview
-              ),
-            ),
+            // ── Interactive Preview Card ──
+            _buildInteractivePreview(context, colors, currency),
             const Gap(32),
 
             // ── Templates Section ──
@@ -558,24 +733,6 @@ class _AccountFormScreenState extends ConsumerState<AccountFormScreen> {
                     ),
                   );
                 },
-              ),
-            ),
-            const Gap(24),
-
-            _buildPremiumTextField(
-              controller: nameController,
-              label: 'Account Name',
-              icon: Icons.label_outline_rounded,
-              textCapitalization: TextCapitalization.words,
-              enabled: selectedTemplateId == null,
-            ),
-            const Gap(16),
-            _buildPremiumTextField(
-              controller: balanceController,
-              label: 'Initial Balance',
-              icon: Icons.payments_outlined,
-              keyboardType: const TextInputType.numberWithOptions(
-                decimal: true,
               ),
             ),
             const Gap(24),
@@ -881,6 +1038,161 @@ class _AccountFormScreenState extends ConsumerState<AccountFormScreen> {
                     ],
                   ),
                 ),
+              ),
+            ),
+            const Gap(24),
+            Row(
+              children: [
+                Icon(
+                  Icons.auto_awesome_motion_rounded,
+                  size: 16,
+                  color: AppTheme.primaryColor(context).withValues(alpha: 0.7),
+                ),
+                const Gap(6),
+                Text(
+                  'Card Decoration',
+                  style: TextStyle(
+                    color: AppTheme.textLightColor(
+                      context,
+                    ).withValues(alpha: 0.7),
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                    letterSpacing: 0.3,
+                  ),
+                ),
+              ],
+            ),
+            const Gap(12),
+            SizedBox(
+              height: 90,
+              child: ListView.builder(
+                controller: _cardShapeScrollController,
+                scrollDirection: Axis.horizontal,
+                clipBehavior: Clip.none,
+                itemCount: 9, // Default (None/Hash) + 8 shapes
+                itemBuilder: (context, index) {
+                  final isSelected = index == 0
+                      ? selectedCardShape == null
+                      : selectedCardShape == (index - 1);
+                  final shapeIndex = index == 0 ? null : index - 1;
+
+                  return GestureDetector(
+                    onTap: () {
+                      HapticService.light();
+                      setState(() => selectedCardShape = shapeIndex);
+                    },
+                    child: Container(
+                      width: 140,
+                      height: 80,
+                      margin: const EdgeInsets.only(right: 12),
+                      decoration: BoxDecoration(
+                        color: AppTheme.surfaceColor(context),
+                        borderRadius: BorderRadius.circular(20),
+                        border: Border.all(
+                          color: isSelected
+                              ? AppTheme.primaryColor(context)
+                              : AppTheme.dividerColor(
+                                  context,
+                                ).withValues(alpha: 0.15),
+                          width: 2.5,
+                        ),
+                        boxShadow: isSelected
+                            ? [
+                                BoxShadow(
+                                  color: AppTheme.primaryColor(
+                                    context,
+                                  ).withValues(alpha: 0.15),
+                                  blurRadius: 10,
+                                  offset: const Offset(0, 4),
+                                ),
+                              ]
+                            : null,
+                      ),
+                      clipBehavior: Clip.antiAlias,
+                      child: Stack(
+                        children: [
+                          if (index == 0)
+                            Center(
+                              child: Column(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Icon(
+                                    Icons.auto_awesome_rounded,
+                                    size: 20,
+                                    color: isSelected
+                                        ? AppTheme.primaryColor(context)
+                                        : AppTheme.textLightColor(
+                                            context,
+                                          ).withValues(alpha: 0.5),
+                                  ),
+                                  const Gap(4),
+                                  Text(
+                                    'Auto',
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w700,
+                                      color: isSelected
+                                          ? AppTheme.textColor(context)
+                                          : AppTheme.textLightColor(
+                                              context,
+                                            ).withValues(alpha: 0.7),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            )
+                          else
+                            Positioned.fill(
+                              child: Center(
+                                child: IgnorePointer(
+                                  child: Transform.scale(
+                                    scale: 0.6,
+                                    child: SizedBox(
+                                      width: 200,
+                                      height: 120,
+                                      child: AccountItem(
+                                        account: Account(
+                                          id: 'shape_preview_$index',
+                                          name: 'Preview',
+                                          iconCodePoint: selectedIcon,
+                                          colorHex:
+                                              '#${(selectedCardColor ?? selectedColor).toARGB32().toRadixString(16).padLeft(8, '0').substring(2)}',
+                                          cardColorHex:
+                                              '#${(selectedCardColor ?? selectedColor).toARGB32().toRadixString(16).padLeft(8, '0').substring(2)}',
+                                          cardShapeType: index - 1,
+                                        ),
+                                        balance: 0,
+                                        currencySymbol: '',
+                                        onTap: () {},
+                                        isPreview: true,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ),
+                          if (isSelected)
+                            Positioned(
+                              top: 8,
+                              right: 8,
+                              child: Container(
+                                padding: const EdgeInsets.all(4),
+                                decoration: BoxDecoration(
+                                  color: AppTheme.primaryColor(context),
+                                  shape: BoxShape.circle,
+                                ),
+                                child: const Icon(
+                                  Icons.check_rounded,
+                                  color: Colors.white,
+                                  size: 12,
+                                ),
+                              ),
+                            ),
+                        ],
+                      ),
+                    ),
+                  );
+                },
               ),
             ),
             const Gap(24),

@@ -5,6 +5,7 @@ import 'package:koin/core/models/account.dart';
 import 'package:koin/core/theme.dart';
 import 'package:koin/core/utils/icon_utils.dart';
 import 'package:koin/core/widgets/animated_counter.dart';
+import 'package:koin/core/widgets/card_background_shapes.dart';
 import 'package:koin/core/widgets/pressable_scale.dart';
 
 class AccountItem extends StatelessWidget {
@@ -14,6 +15,8 @@ class AccountItem extends StatelessWidget {
   final VoidCallback onTap;
   final VoidCallback? onPrivateToggle;
   final Widget? trailing;
+  final bool isPreview;
+  final bool isSelected;
 
   const AccountItem({
     super.key,
@@ -23,6 +26,8 @@ class AccountItem extends StatelessWidget {
     required this.onTap,
     this.onPrivateToggle,
     this.trailing,
+    this.isPreview = false,
+    this.isSelected = false,
   });
 
   /// Whether the card has a coloured (non-default) background.
@@ -58,8 +63,10 @@ class AccountItem extends StatelessWidget {
           ),
         ],
         border: Border.all(
-          color: Colors.white.withValues(alpha: 0.15),
-          width: 0.5,
+          color: isSelected
+              ? Colors.white
+              : Colors.white.withValues(alpha: 0.15),
+          width: isSelected ? 2.5 : 0.5,
         ),
       );
     }
@@ -69,10 +76,12 @@ class AccountItem extends StatelessWidget {
       color: surfaceColor,
       borderRadius: BorderRadius.circular(24),
       border: Border.all(
-        color: isDark
-            ? Colors.white.withValues(alpha: 0.08)
-            : AppTheme.dividerColor(context).withValues(alpha: 0.6),
-        width: 1.2,
+        color: isSelected
+            ? AppTheme.primaryColor(context)
+            : (isDark
+                  ? Colors.white.withValues(alpha: 0.08)
+                  : AppTheme.dividerColor(context).withValues(alpha: 0.6)),
+        width: isSelected ? 2.5 : 1.2,
       ),
       boxShadow: [
         BoxShadow(
@@ -89,102 +98,17 @@ class AccountItem extends StatelessWidget {
   List<Widget> _buildBackgroundShapes(bool colored) {
     if (!colored) return const [];
 
-    final hash = account.id.hashCode.abs();
-    final shapeType = hash % 4;
+    final shapeType = account.cardShapeType ?? (account.id.hashCode.abs() % 4);
+    final opacityMultiplier = isPreview ? 3.0 : 1.0;
 
-    switch (shapeType) {
-      case 0:
-        return [
-          Positioned(
-            right: -24,
-            top: -24,
-            child: Container(
-              width: 130,
-              height: 130,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: Colors.white.withValues(alpha: 0.12),
-              ),
-            ),
-          ),
-        ];
-      case 1:
-        return [
-          Positioned(
-            right: -40,
-            bottom: -50,
-            child: Transform.rotate(
-              angle: 0.5,
-              child: Container(
-                width: 140,
-                height: 120,
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(30),
-                  color: Colors.white.withValues(alpha: 0.10),
-                ),
-              ),
-            ),
-          ),
-        ];
-      case 2:
-        return [
-          Positioned(
-            right: 40,
-            top: -20,
-            child: Container(
-              width: 70,
-              height: 70,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: Colors.white.withValues(alpha: 0.08),
-              ),
-            ),
-          ),
-          Positioned(
-            right: -20,
-            bottom: -10,
-            child: Container(
-              width: 90,
-              height: 90,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: Colors.white.withValues(alpha: 0.12),
-              ),
-            ),
-          ),
-        ];
-      case 3:
-      default:
-        return [
-          Positioned(
-            left: -40,
-            bottom: -40,
-            child: Transform.rotate(
-              angle: 0.8,
-              child: Container(
-                width: 140,
-                height: 140,
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(32),
-                  color: Colors.white.withValues(alpha: 0.14),
-                ),
-              ),
-            ),
-          ),
-          Positioned(
-            right: -20,
-            top: 20,
-            child: Container(
-              width: 80,
-              height: 140,
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(40),
-                color: Colors.white.withValues(alpha: 0.10),
-              ),
-            ),
-          ),
-        ];
-    }
+    return [
+      Positioned.fill(
+        child: CardBackgroundShapes(
+          shapeType: shapeType,
+          opacityMultiplier: opacityMultiplier,
+        ),
+      ),
+    ];
   }
 
   @override
@@ -201,148 +125,154 @@ class AccountItem extends StatelessWidget {
         child: Stack(
           children: [
             ..._buildBackgroundShapes(colored),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-              child: Row(
-                children: [
-                  // ── Account Icon / Logo ──
-                  Container(
-                    width: 48,
-                    height: 48,
-                    decoration: BoxDecoration(
-                      color: account.logoAsset == null
-                          ? (colored
-                                ? Colors.white.withValues(alpha: 0.15)
-                                : account.color.withValues(alpha: 0.1))
-                          : null,
-                      border: account.logoAsset == null
-                          ? Border.all(
-                              color: colored
-                                  ? Colors.white.withValues(alpha: 0.25)
-                                  : account.color.withValues(alpha: 0.15),
-                              width: 1,
-                            )
-                          : null,
-                      borderRadius: BorderRadius.circular(16),
-                    ),
-                    child: account.logoAsset != null
-                        ? ClipRRect(
-                            borderRadius: BorderRadius.circular(16),
-                            child: Image.asset(
-                              account.logoAsset!,
-                              fit: BoxFit.cover,
-                            ),
-                          )
-                        : Center(
-                            child: Icon(
-                              IconUtils.getIcon(account.iconCodePoint),
-                              color: colored ? Colors.white : account.color,
-                              size: 24,
-                            ),
-                          ),
-                  ),
-                  const Gap(16),
-
-                  // ── Name + Balance (two lines) ──
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          account.name,
-                          style: TextStyle(
-                            color: colored
-                                ? Colors.white.withValues(alpha: 0.85)
-                                : AppTheme.textLightColor(context),
-                            fontWeight: FontWeight.w600,
-                            fontSize: 13,
-                            letterSpacing: -0.1,
-                          ),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                        const Gap(2),
-                        isPrivate
-                            ? Text(
-                                '••••••',
-                                style: TextStyle(
-                                  color: colored
-                                      ? Colors.white
-                                      : AppTheme.textColor(context),
-                                  fontWeight: FontWeight.w800,
-                                  fontSize: 18,
-                                  letterSpacing: 2,
-                                ),
+            if (isPreview)
+              const SizedBox.shrink()
+            else
+              Padding(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 20,
+                  vertical: 16,
+                ),
+                child: Row(
+                  children: [
+                    // ── Account Icon / Logo ──
+                    Container(
+                      width: 48,
+                      height: 48,
+                      decoration: BoxDecoration(
+                        color: account.logoAsset == null
+                            ? (colored
+                                  ? Colors.white.withValues(alpha: 0.15)
+                                  : account.color.withValues(alpha: 0.1))
+                            : null,
+                        border: account.logoAsset == null
+                            ? Border.all(
+                                color: colored
+                                    ? Colors.white.withValues(alpha: 0.25)
+                                    : account.color.withValues(alpha: 0.15),
+                                width: 1,
                               )
-                            : AnimatedCounter(
-                                value: balance,
-                                formatter: (v) => NumberFormat.currency(
-                                  symbol: currencySymbol,
-                                ).format(v),
-                                duration: const Duration(milliseconds: 600),
-                                style: TextStyle(
-                                  color: colored
-                                      ? Colors.white
-                                      : AppTheme.textColor(context),
-                                  fontWeight: FontWeight.w700,
-                                  fontSize: 18,
-                                  letterSpacing: -0.5,
-                                ),
+                            : null,
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                      child: account.logoAsset != null
+                          ? ClipRRect(
+                              borderRadius: BorderRadius.circular(16),
+                              child: Image.asset(
+                                account.logoAsset!,
+                                fit: BoxFit.cover,
                               ),
-                      ],
+                            )
+                          : Center(
+                              child: Icon(
+                                IconUtils.getIcon(account.iconCodePoint),
+                                color: colored ? Colors.white : account.color,
+                                size: 24,
+                              ),
+                            ),
                     ),
-                  ),
+                    const Gap(16),
 
-                  // ── Privacy Toggle ──
-                  if (onPrivateToggle != null) ...[
-                    GestureDetector(
-                      onTap: onPrivateToggle,
-                      behavior: HitTestBehavior.opaque,
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 4,
-                          vertical: 8,
-                        ),
-                        child: Icon(
+                    // ── Name + Balance (two lines) ──
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            account.name,
+                            style: TextStyle(
+                              color: colored
+                                  ? Colors.white.withValues(alpha: 0.85)
+                                  : AppTheme.textLightColor(context),
+                              fontWeight: FontWeight.w600,
+                              fontSize: 13,
+                              letterSpacing: -0.1,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          const Gap(2),
                           isPrivate
-                              ? Icons.visibility_off_rounded
-                              : Icons.visibility_rounded,
-                          size: 20,
-                          color: colored
-                              ? Colors.white.withValues(
-                                  alpha: isPrivate ? 0.5 : 0.8,
+                              ? Text(
+                                  '••••••',
+                                  style: TextStyle(
+                                    color: colored
+                                        ? Colors.white
+                                        : AppTheme.textColor(context),
+                                    fontWeight: FontWeight.w800,
+                                    fontSize: 18,
+                                    letterSpacing: 2,
+                                  ),
                                 )
-                              : (isPrivate
-                                    ? AppTheme.textLightColor(
-                                        context,
-                                      ).withValues(alpha: 0.4)
-                                    : AppTheme.primaryColor(
-                                        context,
-                                      ).withValues(alpha: 0.6)),
-                        ),
+                              : AnimatedCounter(
+                                  value: balance,
+                                  formatter: (v) => NumberFormat.currency(
+                                    symbol: currencySymbol,
+                                  ).format(v),
+                                  duration: const Duration(milliseconds: 600),
+                                  style: TextStyle(
+                                    color: colored
+                                        ? Colors.white
+                                        : AppTheme.textColor(context),
+                                    fontWeight: FontWeight.w700,
+                                    fontSize: 18,
+                                    letterSpacing: -0.5,
+                                  ),
+                                ),
+                        ],
                       ),
                     ),
-                  ],
 
-                  // ── Trailing (drag handle etc.) ──
-                  if (trailing != null) ...[
-                    const Gap(8),
-                    Theme(
-                      data: Theme.of(context).copyWith(
-                        iconTheme: IconThemeData(
-                          color: colored
-                              ? Colors.white.withValues(alpha: 0.5)
-                              : AppTheme.textLightColor(
-                                  context,
-                                ).withValues(alpha: 0.3),
+                    // ── Privacy Toggle ──
+                    if (onPrivateToggle != null) ...[
+                      GestureDetector(
+                        onTap: onPrivateToggle,
+                        behavior: HitTestBehavior.opaque,
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 4,
+                            vertical: 8,
+                          ),
+                          child: Icon(
+                            isPrivate
+                                ? Icons.visibility_off_rounded
+                                : Icons.visibility_rounded,
+                            size: 20,
+                            color: colored
+                                ? Colors.white.withValues(
+                                    alpha: isPrivate ? 0.5 : 0.8,
+                                  )
+                                : (isPrivate
+                                      ? AppTheme.textLightColor(
+                                          context,
+                                        ).withValues(alpha: 0.4)
+                                      : AppTheme.primaryColor(
+                                          context,
+                                        ).withValues(alpha: 0.6)),
+                          ),
                         ),
                       ),
-                      child: trailing!,
-                    ),
+                    ],
+
+                    // ── Trailing (drag handle etc.) ──
+                    if (trailing != null) ...[
+                      const Gap(8),
+                      Theme(
+                        data: Theme.of(context).copyWith(
+                          iconTheme: IconThemeData(
+                            color: colored
+                                ? Colors.white.withValues(alpha: 0.5)
+                                : AppTheme.textLightColor(
+                                    context,
+                                  ).withValues(alpha: 0.3),
+                          ),
+                        ),
+                        child: trailing!,
+                      ),
+                    ],
                   ],
-                ],
+                ),
               ),
-            ),
           ],
         ),
       ),
